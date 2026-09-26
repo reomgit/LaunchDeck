@@ -17,6 +17,7 @@
 ## [DISCOVERIES]
 
 - 2026-09-26T14:38Z [TOOL] The project uses Xcode file-system synchronized groups, so new Swift files are automatically included in the app target.
+- 2026-09-26T14:51Z [TOOL] GitHub's Xcode 26.6 runner rejects Xcode project object version 110; object version 77 is compatible with this project structure.
 
 ## [OUTCOMES]
 
