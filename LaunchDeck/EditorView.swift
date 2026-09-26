@@ -127,8 +127,19 @@ private struct LaunchpadSurface: View {
     let coordinator: AppCoordinator
     private let spacing: CGFloat = 7
     private let controlSide: CGFloat = 54
-    private let topControls = ["Session", "Drums", "Keys", "User", "Mixer", "Volume", "Pan", "Send"]
-    private let sideControls = ["Volume", "Pan", "Send A", "Send B", "Stop", "Solo", "Mute", "Record"]
+    private let topControls = [
+        PeripheralControlDescriptor(visualLabel: "▲", accessibilityLabel: "Navigate up"),
+        PeripheralControlDescriptor(visualLabel: "▼", accessibilityLabel: "Navigate down"),
+        PeripheralControlDescriptor(visualLabel: "◀", accessibilityLabel: "Navigate left"),
+        PeripheralControlDescriptor(visualLabel: "▶", accessibilityLabel: "Navigate right"),
+        PeripheralControlDescriptor(visualLabel: "Session", accessibilityLabel: "Session mode"),
+        PeripheralControlDescriptor(visualLabel: "Drums", accessibilityLabel: "Drums mode"),
+        PeripheralControlDescriptor(visualLabel: "Keys", accessibilityLabel: "Keys mode"),
+        PeripheralControlDescriptor(visualLabel: "User", accessibilityLabel: "User mode")
+    ]
+    private let sideControls =
+        (1...7).map { PeripheralControlDescriptor(visualLabel: "▶", accessibilityLabel: "Scene launch \($0)") }
+        + [PeripheralControlDescriptor(visualLabel: "Stop\nSolo\nMute", accessibilityLabel: "Stop, Solo, Mute selector")]
 
     private var visualPadOrder: [Int] {
         (0..<8).reversed().flatMap { row in
@@ -145,8 +156,8 @@ private struct LaunchpadSurface: View {
             GridRow {
                 SurfaceCorner()
                     .frame(width: controlSide, height: controlSide)
-                ForEach(Array(topControls.enumerated()), id: \.offset) { index, label in
-                    PeripheralControl(label: label, position: .top(index))
+                ForEach(Array(topControls.enumerated()), id: \.offset) { _, control in
+                    PeripheralControl(control: control)
                         .frame(width: controlSide, height: controlSide)
                 }
             }
@@ -166,7 +177,7 @@ private struct LaunchpadSurface: View {
                         )
                         .frame(width: controlSide, height: controlSide)
                     }
-                    PeripheralControl(label: sideControls[row], position: .side(row))
+                    PeripheralControl(control: sideControls[row])
                         .frame(width: controlSide, height: controlSide)
                 }
             }
@@ -188,30 +199,27 @@ private struct SurfaceCorner: View {
     }
 }
 
-private struct PeripheralControl: View {
-    enum Position {
-        case top(Int)
-        case side(Int)
-    }
+private struct PeripheralControlDescriptor {
+    let visualLabel: String
+    let accessibilityLabel: String
+}
 
-    let label: String
-    let position: Position
+private struct PeripheralControl: View {
+    let control: PeripheralControlDescriptor
 
     var body: some View {
-        Button {} label: {
-            Text(label)
-                .font(.caption2.weight(.semibold))
-                .lineLimit(2)
-                .minimumScaleFactor(0.55)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .aspectRatio(1, contentMode: .fit)
+        Text(control.visualLabel)
+            .font(.caption2.weight(.semibold))
+            .lineLimit(3)
+            .minimumScaleFactor(0.55)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .foregroundStyle(.secondary)
+            .aspectRatio(1, contentMode: .fit)
+            .contentShape(.rect)
         .glassEffect(.regular, in: .rect(cornerRadius: 12))
-        .accessibilityLabel("\(label) control")
-        .accessibilityHint("Peripheral controls are visual-only in this MVP")
+        .accessibilityLabel(control.accessibilityLabel)
+        .accessibilityHint("Peripheral control shown for physical orientation; it has no LaunchDeck binding")
     }
 }
 

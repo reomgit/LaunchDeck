@@ -6,6 +6,15 @@ import Testing
 @testable import LaunchDeckCore
 
 struct LaunchDeckCoreTests {
+    @Test("A new configuration starts with an empty Global preset")
+    func defaultConfigurationHasNoBindings() {
+        let configuration = Configuration.default
+
+        #expect(configuration.profiles.count == 1)
+        #expect(configuration.profiles[0].isGlobal)
+        #expect(configuration.profiles[0].bindings.isEmpty)
+    }
+
     @Test("An app profile overrides only its assigned pads")
     func resolvesApplicationProfileOverGlobalFallback() {
         let global = Profile(
