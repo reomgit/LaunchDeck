@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  test-arm64:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Run core tests
+        run: swift test
+      - name: Build arm64 app
+        run: >-
+          xcodebuild build
+          -project LaunchDeck.xcodeproj
+          -scheme LaunchDeck
+          -configuration Debug
+          -destination 'platform=macOS,arch=arm64'
+          -derivedDataPath "$RUNNER_TEMP/DerivedData-arm64"
+          CODE_SIGNING_ALLOWED=NO
+
+  build-intel:
+    runs-on: macos-26-intel
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Build Intel app
+        run: >-
+          xcodebuild build
+          -project LaunchDeck.xcodeproj
+          -scheme LaunchDeck
+          -configuration Debug
+          -destination 'platform=macOS,arch=x86_64'
+          -derivedDataPath "$RUNNER_TEMP/DerivedData-intel"
+          CODE_SIGNING_ALLOWED=NO
+
+  release-preview:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test-arm64, build-intel]
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Archive universal preview
+        run: |
+          xcodebuild archive \
+            -project LaunchDeck.xcodeproj \
+            -scheme LaunchDeck \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/LaunchDeck.xcarchive" \
+            ARCHS='arm64 x86_64' \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO
+          APP="$RUNNER_TEMP/LaunchDeck.xcarchive/Products/Applications/LaunchDeck.app"
+          codesign --force --deep --sign - "$APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" LaunchDeck.zip
+          shasum -a 256 LaunchDeck.zip > LaunchDeck.zip.sha256
+      - name: Publish unnotarized preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          LaunchDeck.zip LaunchDeck.zip.sha256
+          --prerelease
+          --title "$GITHUB_REF_NAME"
+          --notes "Unnotarized preview build. Grant Accessibility access after launch."

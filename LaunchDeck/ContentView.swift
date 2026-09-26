@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright © 2026 Reom Nagasaka
 //
 //  ContentView.swift
 //  LaunchDeck
@@ -9,16 +11,10 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        LaunchDeckEditor()
     }
 }
 
 #Preview {
-    ContentView()
+    ContentView().environment(AppCoordinator())
 }
