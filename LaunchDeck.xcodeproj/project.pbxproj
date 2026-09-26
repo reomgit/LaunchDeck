@@ -13,10 +13,23 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AFB38E2E306809B900112854 /* LaunchDeck */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AFB38E3A306809B900112854 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
 			path = LaunchDeck;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AFB38E3A306809B900112854 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AFB38E2B306809B900112854 /* LaunchDeck */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AFB38E29306809B900112854 /* Frameworks */ = {
@@ -249,10 +262,8 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				EXTRACT_APP_INTENTS_METADATA = NO;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Reom Nagasaka";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = LaunchDeck/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -285,10 +296,8 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				EXTRACT_APP_INTENTS_METADATA = NO;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Reom Nagasaka";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = LaunchDeck/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

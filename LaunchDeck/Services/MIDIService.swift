@@ -11,6 +11,11 @@ private struct MIDI1Message: Sendable {
     let data2: UInt8
 }
 
+private struct MIDIInputEvent: Sendable {
+    let messages: [MIDI1Message]
+    let generation: Int
+}
+
 private final class MIDIConnectionState: @unchecked Sendable {
     private let lock = NSLock()
     private var generation = 0
@@ -29,6 +34,47 @@ private final class MIDIConnectionState: @unchecked Sendable {
     }
 }
 
+/// This object is deliberately independent of `MIDIService`: CoreMIDI invokes
+/// its receive block on a non-main real-time thread.
+private final class MIDIInputReceiver: @unchecked Sendable {
+    private let callbackState: MIDIConnectionState
+    private let continuation: AsyncStream<MIDIInputEvent>.Continuation
+
+    init(callbackState: MIDIConnectionState, continuation: AsyncStream<MIDIInputEvent>.Continuation) {
+        self.callbackState = callbackState
+        self.continuation = continuation
+    }
+
+    func receive(_ eventList: UnsafePointer<MIDIEventList>) {
+        var messages = [MIDI1Message]()
+        let generation = callbackState.snapshot()
+        var packet = withUnsafePointer(to: eventList.pointee.packet) {
+            UnsafeRawPointer($0).assumingMemoryBound(to: MIDIEventPacket.self)
+        }
+
+        for _ in 0..<Int(eventList.pointee.numPackets) {
+            let wordCount = Int(packet.pointee.wordCount)
+            withUnsafePointer(to: packet.pointee.words) { tuple in
+                tuple.withMemoryRebound(to: UInt32.self, capacity: wordCount) { words in
+                    for index in 0..<wordCount {
+                        let word = words[index]
+                        guard (word & 0xF000_0000) == 0x2000_0000 else { continue }
+                        messages.append(MIDI1Message(
+                            status: UInt8((word >> 16) & 0xFF),
+                            data1: UInt8((word >> 8) & 0x7F),
+                            data2: UInt8(word & 0x7F)
+                        ))
+                    }
+                }
+            }
+            packet = UnsafePointer(MIDIEventPacketNext(packet))
+        }
+
+        guard !messages.isEmpty else { return }
+        continuation.yield(MIDIInputEvent(messages: messages, generation: generation))
+    }
+}
+
 @MainActor
 @Observable
 final class MIDIService {
@@ -43,7 +89,29 @@ final class MIDIService {
     @ObservationIgnored private var inputPort = MIDIPortRef()
     @ObservationIgnored private var source = MIDIEndpointRef()
     @ObservationIgnored private var destination = MIDIEndpointRef()
-    @ObservationIgnored nonisolated private let callbackState = MIDIConnectionState()
+    @ObservationIgnored nonisolated private let callbackState: MIDIConnectionState
+    @ObservationIgnored nonisolated private let inputReceiver: MIDIInputReceiver
+    @ObservationIgnored private var inputTask: Task<Void, Never>?
+
+    init() {
+        let callbackState = MIDIConnectionState()
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: MIDIInputEvent.self,
+            bufferingPolicy: .bufferingNewest(128)
+        )
+        self.callbackState = callbackState
+        inputReceiver = MIDIInputReceiver(callbackState: callbackState, continuation: continuation)
+        inputTask = Task { @MainActor [weak self] in
+            for await event in stream {
+                guard !Task.isCancelled, let self else { return }
+                self.receive(event.messages, generation: event.generation)
+            }
+        }
+    }
+
+    deinit {
+        inputTask?.cancel()
+    }
 
     func start() {
         guard client == 0 else {
@@ -59,8 +127,9 @@ final class MIDIService {
             return
         }
 
-        let portStatus = MIDIInputPortCreateWithProtocol(client, "LaunchDeck Input" as CFString, ._1_0, &inputPort) { [weak self] eventList, _ in
-            self?.receive(eventList)
+        let receiver = inputReceiver
+        let portStatus = MIDIInputPortCreateWithProtocol(client, "LaunchDeck Input" as CFString, ._1_0, &inputPort) { eventList, _ in
+            receiver.receive(eventList)
         }
         guard portStatus == noErr else {
             statusMessage = "CoreMIDI input unavailable (\(portStatus))"
@@ -99,38 +168,6 @@ final class MIDIService {
     func sendSysEx(_ bytes: [UInt8]) {
         guard destination != 0, !bytes.isEmpty else { return }
         PendingSysEx(destination: destination, bytes: bytes).send()
-    }
-
-    /// CoreMIDI owns `eventList` only for the duration of this callback. Decode it
-    /// into Sendable values before scheduling any work on the main actor.
-    private nonisolated func receive(_ eventList: UnsafePointer<MIDIEventList>) {
-        var messages = [MIDI1Message]()
-        let generation = callbackState.snapshot()
-        var packet = withUnsafePointer(to: eventList.pointee.packet) {
-            UnsafeRawPointer($0).assumingMemoryBound(to: MIDIEventPacket.self)
-        }
-
-        for _ in 0..<Int(eventList.pointee.numPackets) {
-            let wordCount = Int(packet.pointee.wordCount)
-            withUnsafePointer(to: packet.pointee.words) { tuple in
-                tuple.withMemoryRebound(to: UInt32.self, capacity: wordCount) { words in
-                    for index in 0..<wordCount {
-                        let word = words[index]
-                        guard (word & 0xF000_0000) == 0x2000_0000 else { continue }
-                        let status = UInt8((word >> 16) & 0xFF)
-                        let data1 = UInt8((word >> 8) & 0x7F)
-                        let data2 = UInt8(word & 0x7F)
-                        messages.append(MIDI1Message(status: status, data1: data1, data2: data2))
-                    }
-                }
-            }
-            packet = UnsafePointer(MIDIEventPacketNext(packet))
-        }
-
-        guard !messages.isEmpty else { return }
-        Task { @MainActor [weak self] in
-            self?.receive(messages, generation: generation)
-        }
     }
 
     private func receive(_ messages: [MIDI1Message], generation: Int) {
