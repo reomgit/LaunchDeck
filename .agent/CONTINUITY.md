@@ -20,6 +20,7 @@
 - 2026-09-26T14:51Z [TOOL] GitHub's Xcode 26.6 runner rejects Xcode project object version 110; object version 77 is compatible with this project structure.
 - 2026-09-26T15:00Z [USER+TOOL] A CoreMIDI callback triggered a Swift MainActor queue assertion. Crash-report evidence showed the callback captured `MIDIService`; it now uses a nonisolated receiver and an `AsyncStream` boundary. Added the exported drag payload UTI to the app Info.plist.
 - 2026-09-27T00:13Z [TOOL] LLDB showed the CoreMIDI receive closure itself still inherited MainActor isolation. Moved its creation into a nonisolated static factory. Replaced the lazy editor scene with an AppKit-hosted window shown by the app delegate at launch; visually verified the running editor and Mini MK3 connection.
+- 2026-09-27T00:26Z [USER+TOOL] Replaced the editor's clipped 8×8 grid with a visually verified 9×9 Launchpad surface: square glass main pads, top controls, and right-side controls. Restored left-to-right pad order (top row 57 through 64) and raised the fixed editor minimum size so the full surface fits.
 
 ## [OUTCOMES]
 

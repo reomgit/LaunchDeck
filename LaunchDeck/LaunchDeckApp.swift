@@ -52,7 +52,7 @@ private final class LaunchDeckAppDelegate: NSObject, NSApplicationDelegate, NSWi
 
         let window = makeWindow(
             title: "LaunchDeck",
-            size: NSSize(width: 1_130, height: 760),
+            size: NSSize(width: 1_280, height: 860),
             rootView: ContentView().environment(coordinator)
         )
         editorWindow = window

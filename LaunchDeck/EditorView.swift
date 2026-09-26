@@ -18,12 +18,12 @@ struct LaunchDeckEditor: View {
                 VStack(spacing: 18) {
                     EditorHeader(coordinator: coordinator)
                     ActionLibrary()
-                    PadGrid(coordinator: coordinator)
+                    LaunchpadSurface(coordinator: coordinator)
                 }
                 .padding(20)
-                .frame(minWidth: 620, minHeight: 620)
+                .frame(minWidth: 520, maxWidth: .infinity, maxHeight: .infinity)
                 PadInspector(coordinator: coordinator)
-                    .frame(minWidth: 260, idealWidth: 300, maxWidth: 340)
+                    .frame(minWidth: 230, idealWidth: 280, maxWidth: 320)
             }
         }
         .navigationTitle("LaunchDeck")
@@ -123,28 +123,95 @@ private struct ActionTemplate: View {
     }
 }
 
-private struct PadGrid: View {
+private struct LaunchpadSurface: View {
     let coordinator: AppCoordinator
-    private let columns = Array(repeating: GridItem(.flexible(minimum: 50), spacing: 7), count: 8)
+    private let spacing: CGFloat = 7
+    private let controlSide: CGFloat = 54
+    private let topControls = ["Session", "Drums", "Keys", "User", "Mixer", "Volume", "Pan", "Send"]
+    private let sideControls = ["Volume", "Pan", "Send A", "Send B", "Stop", "Solo", "Mute", "Record"]
+
+    private var visualPadOrder: [Int] {
+        (0..<8).reversed().flatMap { row in
+            (0..<8).map { column in row * 8 + column }
+        }
+    }
+
+    private var gridSide: CGFloat {
+        controlSide * 9 + spacing * 8
+    }
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 7) {
-            ForEach(Array((0..<64).reversed()), id: \.self) { index in
-                PadCell(
-                    index: index,
-                    binding: coordinator.displayedBinding(at: index),
-                    inherited: coordinator.isInherited(at: index),
-                    selected: coordinator.selectedPadIndex == index,
-                    onSelect: { coordinator.selectPad(index) },
-                    onAssign: { coordinator.assign($0.binding(for: index), to: index) },
-                    onClear: { coordinator.selectPad(index); coordinator.clearSelectedPad() },
-                    onDisable: { coordinator.selectPad(index); coordinator.disableSelectedPad() }
-                )
+        Grid(horizontalSpacing: spacing, verticalSpacing: spacing) {
+            GridRow {
+                SurfaceCorner()
+                    .frame(width: controlSide, height: controlSide)
+                ForEach(Array(topControls.enumerated()), id: \.offset) { index, label in
+                    PeripheralControl(label: label, position: .top(index))
+                        .frame(width: controlSide, height: controlSide)
+                }
+            }
+            ForEach(0..<8, id: \.self) { row in
+                GridRow {
+                    ForEach(0..<8, id: \.self) { column in
+                        let index = visualPadOrder[row * 8 + column]
+                        PadCell(
+                            index: index,
+                            binding: coordinator.displayedBinding(at: index),
+                            inherited: coordinator.isInherited(at: index),
+                            selected: coordinator.selectedPadIndex == index,
+                            onSelect: { coordinator.selectPad(index) },
+                            onAssign: { coordinator.assign($0.binding(for: index), to: index) },
+                            onClear: { coordinator.selectPad(index); coordinator.clearSelectedPad() },
+                            onDisable: { coordinator.selectPad(index); coordinator.disableSelectedPad() }
+                        )
+                        .frame(width: controlSide, height: controlSide)
+                    }
+                    PeripheralControl(label: sideControls[row], position: .side(row))
+                        .frame(width: controlSide, height: controlSide)
+                }
             }
         }
+        .frame(width: gridSide, height: gridSide)
         .padding(12)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 18))
-        .accessibilityLabel("Launchpad 8 by 8 grid")
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 22))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .layoutPriority(1)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+private struct SurfaceCorner: View {
+    var body: some View {
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct PeripheralControl: View {
+    enum Position {
+        case top(Int)
+        case side(Int)
+    }
+
+    let label: String
+    let position: Position
+
+    var body: some View {
+        Button {} label: {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .lineLimit(2)
+                .minimumScaleFactor(0.55)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .aspectRatio(1, contentMode: .fit)
+        .glassEffect(.regular, in: .rect(cornerRadius: 12))
+        .accessibilityLabel("\(label) control")
+        .accessibilityHint("Peripheral controls are visual-only in this MVP")
     }
 }
 
@@ -175,16 +242,18 @@ private struct PadCell: View {
     private var visual: some View {
         Button(action: onSelect) {
             VStack(spacing: 3) {
-                Text(binding?.label ?? "—").lineLimit(1).font(.caption.weight(.medium))
-                Text(binding?.action.displayName ?? "Unassigned").lineLimit(1).font(.caption2).opacity(0.78)
+                Text(binding?.label ?? "—").lineLimit(1).minimumScaleFactor(0.5).font(.caption.weight(.medium))
+                Text(binding?.action.displayName ?? "Unassigned").lineLimit(1).minimumScaleFactor(0.45).font(.caption2).opacity(0.78)
             }
-            .frame(maxWidth: .infinity, minHeight: 58).padding(4)
+            .frame(maxWidth: .infinity, maxHeight: .infinity).padding(4)
             .foregroundStyle(.primary)
-            .background(Color(binding?.color ?? .off).opacity(binding == nil ? 0.12 : 0.58), in: RoundedRectangle(cornerRadius: 10))
-            .overlay { RoundedRectangle(cornerRadius: 10).stroke(selected ? Color.accentColor : .white.opacity(inherited ? 0.35 : 0.12), lineWidth: selected ? 3 : 1) }
+            .background(Color(binding?.color ?? .off).opacity(binding == nil ? 0.16 : 0.56), in: RoundedRectangle(cornerRadius: 12))
+            .glassEffect(.regular, in: .rect(cornerRadius: 12))
+            .overlay { RoundedRectangle(cornerRadius: 12).stroke(selected ? Color.accentColor : .white.opacity(inherited ? 0.35 : 0.12), lineWidth: selected ? 3 : 1) }
             .opacity(inherited ? 0.72 : 1)
         }
         .buttonStyle(.plain)
+        .aspectRatio(1, contentMode: .fit)
         .accessibilityLabel("Pad \(index + 1), \(binding?.label ?? "unassigned")")
     }
 }
