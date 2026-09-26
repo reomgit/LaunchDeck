@@ -128,9 +128,13 @@ final class MIDIService {
         }
 
         let receiver = inputReceiver
-        let portStatus = MIDIInputPortCreateWithProtocol(client, "LaunchDeck Input" as CFString, ._1_0, &inputPort) { eventList, _ in
-            receiver.receive(eventList)
-        }
+        let portStatus = MIDIInputPortCreateWithProtocol(
+            client,
+            "LaunchDeck Input" as CFString,
+            ._1_0,
+            &inputPort,
+            MIDIService.inputReceiveBlock(for: receiver)
+        )
         guard portStatus == noErr else {
             statusMessage = "CoreMIDI input unavailable (\(portStatus))"
             return
@@ -179,6 +183,12 @@ final class MIDIService {
                 generation: generation
             ) else { continue }
             onPadEvent?(event)
+        }
+    }
+
+    nonisolated private static func inputReceiveBlock(for receiver: MIDIInputReceiver) -> MIDIReceiveBlock {
+        { eventList, _ in
+            receiver.receive(eventList)
         }
     }
 
