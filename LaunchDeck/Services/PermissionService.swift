@@ -7,6 +7,15 @@ import Observation
 @MainActor
 @Observable
 final class PermissionService {
+    static var settingsPaneName: String {
+        if #available(macOS 27, *) { return "Device Control and Data Access" }
+        return "Accessibility"
+    }
+
+    static var settingsGuidance: String {
+        "Enable LaunchDeck in System Settings → Privacy & Security → \(settingsPaneName)."
+    }
+
     private(set) var accessibilityTrusted = false
     private(set) var eventPostingAllowed = false
 

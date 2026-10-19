@@ -3,26 +3,15 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 110;
 	objects = {
 
 /* Begin PBXFileReference section */
 		AFB38E2C306809B900112854 /* LaunchDeck.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LaunchDeck.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		AFB38E2E306809B900112854 /* LaunchDeck */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				AFB38E3A306809B900112854 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-			path = LaunchDeck;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
-
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		AFB38E3A306809B900112854 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		AFB38E3A306809B900112854 /* Exceptions for "LaunchDeck" folder in "LaunchDeck" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -30,6 +19,17 @@
 			target = AFB38E2B306809B900112854 /* LaunchDeck */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		AFB38E2E306809B900112854 /* LaunchDeck */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AFB38E3A306809B900112854 /* Exceptions for "LaunchDeck" folder in "LaunchDeck" target */,
+			);
+			path = LaunchDeck;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AFB38E29306809B900112854 /* Frameworks */ = {
@@ -274,11 +274,11 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				SUPPORTED_PLATFORMS = macosx;
 			};
 			name = Debug;
 		};
@@ -308,11 +308,11 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				SUPPORTED_PLATFORMS = macosx;
 			};
 			name = Release;
 		};

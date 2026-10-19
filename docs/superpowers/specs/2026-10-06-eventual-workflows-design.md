@@ -1,6 +1,6 @@
 # LaunchDeck eventual workflow goals
 
-Status: proposed design, awaiting user confirmation. This document keeps the original checklist and earlier future roadmap in scope; it does not redefine the goal as only the work already implemented.
+Status: approved for implementation on 2026-10-06. The user authorized the assistant to decide all remaining details. This document keeps the original checklist and earlier future roadmap in scope; it does not redefine the goal as only the work already implemented.
 
 ## Scope and existing behavior
 
@@ -14,7 +14,7 @@ The September desktop workflow implementation is present but uncommitted. No exi
 2. **Native companion and executable plugin processes.** A separate iOS/iPadOS project and an isolated executable plugin protocol provide more platform capabilities, but introduce deployment/signing, process supervision, and a substantially larger SDK. This is appropriate if native mobile distribution or arbitrary plugin code is part of the intended end state.
 3. **Hosted marketplace and cloud synchronization.** Accounts, publishing/moderation, and cloud profile synchronization support remote access and a public ecosystem, but need deployed services and operational ownership. No hosting/account infrastructure is currently specified in the project.
 
-The following design uses approach 1. The browser companion, proposed device models, and declarative extension format are design choices requiring confirmation, rather than previously agreed requirements.
+The implementation uses approach 1: browser companion, Mini MK3/Launchpad X/Pro MK3 adapters, and portable manifest-defined extensions. These choices are covered by the user's authorization to decide all remaining details.
 
 ## Milestone 1: device and configuration foundations
 
@@ -75,4 +75,4 @@ Actual notarized-release acceptance requires the user's Apple Developer membersh
 
 ## Approval
 
-Confirm the full scope and recommended approach, or specify a change to the extension format, device models, or companion platform before implementation. No implementation of these new subsystems has started.
+The user's “Sure, just you decide everything” authorizes the recommended design and routine implementation decisions. No additional design approval is required. Actual remote release publication and signing credentials remain external dependencies.

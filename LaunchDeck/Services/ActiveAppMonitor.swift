@@ -21,8 +21,11 @@ struct ActiveApplication: Equatable, Sendable {
 final class ActiveAppMonitor {
     private(set) var activeApplication: ActiveApplication?
     var onChange: (@MainActor (ActiveApplication?) -> Void)?
+    private(set) var runningBundleIdentifiers: Set<String> = []
+    var onRunningApplicationsChanged: (@MainActor (Set<String>) -> Void)?
 
     @ObservationIgnored private var observer: NSObjectProtocol?
+    @ObservationIgnored private var lifecycleObservers: [NSObjectProtocol] = []
 
     func start() {
         guard observer == nil else { return }
@@ -37,6 +40,11 @@ final class ActiveAppMonitor {
                 self?.setActiveApplication(ActiveApplication(application))
             }
         }
+        for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
+            lifecycleObservers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: NSWorkspace.shared, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.refreshRunningApplications() }
+            })
+        }
     }
 
     func stop() {
@@ -44,10 +52,20 @@ final class ActiveAppMonitor {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
         observer = nil
+        for token in lifecycleObservers { NSWorkspace.shared.notificationCenter.removeObserver(token) }
+        lifecycleObservers.removeAll()
     }
 
-    private func refresh() {
+    func refresh() {
         setActiveApplication(NSWorkspace.shared.frontmostApplication.map(ActiveApplication.init))
+        refreshRunningApplications()
+    }
+
+    private func refreshRunningApplications() {
+        let identifiers = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+        guard identifiers != runningBundleIdentifiers else { return }
+        runningBundleIdentifiers = identifiers
+        onRunningApplicationsChanged?(identifiers)
     }
 
     private func setActiveApplication(_ application: ActiveApplication?) {

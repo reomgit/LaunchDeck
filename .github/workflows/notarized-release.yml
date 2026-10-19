@@ -1,0 +1,59 @@
+name: Notarized artifact
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag, or SHA to package'
+        required: true
+        default: main
+permissions:
+  contents: read
+jobs:
+  notarize:
+    runs-on: macos-26
+    environment: distribution
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Run tests and build universal archive
+        run: |
+          swift test
+          xcodebuild archive -project LaunchDeck.xcodeproj -scheme LaunchDeck -configuration Release -archivePath "$RUNNER_TEMP/LaunchDeck.xcarchive" ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO
+      - name: Sign and notarize
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.DEVELOPER_ID_APPLICATION_IDENTITY }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_APP_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          : "${CERTIFICATE_BASE64:?Missing Developer ID certificate}" "${CERTIFICATE_PASSWORD:?Missing certificate password}" "${SIGNING_IDENTITY:?Missing identity}" "${NOTARY_APPLE_ID:?Missing Apple ID}" "${NOTARY_PASSWORD:?Missing notarization password}" "${NOTARY_TEAM_ID:?Missing team ID}"
+          signing_keychain="$RUNNER_TEMP/launchdeck-signing.keychain-db"
+          signing_password="$(uuidgen)"
+          trap 'security delete-keychain "$signing_keychain" >/dev/null 2>&1 || true; rm -f "$RUNNER_TEMP/launchdeck-signing.p12"' EXIT
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/launchdeck-signing.p12"
+          security create-keychain -p "$signing_password" "$signing_keychain"
+          security set-keychain-settings -lut 21600 "$signing_keychain"
+          security unlock-keychain -p "$signing_password" "$signing_keychain"
+          security list-keychains -d user -s "$signing_keychain" "$HOME/Library/Keychains/login.keychain-db"
+          security import "$RUNNER_TEMP/launchdeck-signing.p12" -k "$signing_keychain" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$signing_password" "$signing_keychain" >/dev/null
+          xcrun notarytool store-credentials launchdeck-distribution --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --keychain "$signing_keychain" >/dev/null
+          release_app="$RUNNER_TEMP/LaunchDeck.xcarchive/Products/Applications/LaunchDeck.app"
+          NOTARY_KEYCHAIN="$signing_keychain" scripts/notarize-release.sh "$release_app" "$SIGNING_IDENTITY" launchdeck-distribution
+          ditto -c -k --sequesterRsrc --keepParent "$release_app" LaunchDeck-notarized.zip
+          shasum -a 256 LaunchDeck-notarized.zip > LaunchDeck-notarized.zip.sha256
+          git archive --format=tar.gz --prefix=LaunchDeck-source/ HEAD > LaunchDeck-source.tar.gz
+          cp LICENSE LaunchDeck-LICENSE
+      - name: Save notarized artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: LaunchDeck-notarized
+          path: |
+            LaunchDeck-notarized.zip
+            LaunchDeck-notarized.zip.sha256
+            LaunchDeck-source.tar.gz
+            LaunchDeck-LICENSE

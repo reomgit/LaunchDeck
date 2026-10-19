@@ -36,6 +36,42 @@
 			<key>UTTypeIdentifier</key>
 			<string>dev.reom.launchdeck.assignment</string>
 		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>dev.reom.launchdeck.profile</string>
+			<key>UTTypeDescription</key>
+			<string>LaunchDeck Profile</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>launchdeckprofile</string>
+				</array>
+			</dict>
+		</dict>
 	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>LaunchDeck Profile</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>dev.reom.launchdeck.profile</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+		</dict>
+	</array>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>LaunchDeck runs AppleScript actions you review and enable to control the applications you choose.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Enable optional audio-reactive lighting using microphone loudness. Audio is processed locally and is not saved.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>LaunchDeck connects your paired phone or tablet to its virtual control deck over your local network.</string>
 </dict>
 </plist>

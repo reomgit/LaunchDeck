@@ -1,0 +1,68 @@
+{
+  "entries" : [
+    {
+      "artifactURL" : "http:\/\/127.0.0.1:8765\/org.launchdeck.desktop-starter.launchdeckprofile",
+      "author" : "LaunchDeck",
+      "description" : "Copy, paste, and integration documentation. Imported as an independent profile.",
+      "id" : "org.launchdeck.desktop-starter",
+      "license" : "GPL-3.0-only",
+      "name" : "Desktop Starter",
+      "sha256" : "fb61db926349f003eb52fcaace98121e417e68c1cb8e5712e9d15d9d29741a19",
+      "size" : 1231,
+      "supportedApplications" : [
+
+      ],
+      "supportedDeviceModels" : [
+        "miniMK3"
+      ],
+      "supportedServices" : [
+
+      ],
+      "type" : "profile",
+      "version" : "1.0.0"
+    },
+    {
+      "artifactURL" : "http:\/\/127.0.0.1:8765\/org.launchdeck.starter-icons.launchdeckicons",
+      "author" : "LaunchDeck",
+      "description" : "Home, play, and folder symbols as portable PNG artwork.",
+      "id" : "org.launchdeck.starter-icons",
+      "license" : "GPL-3.0-only",
+      "name" : "Starter Icons",
+      "sha256" : "fe5fddddfcad37d20b6575b88673846b71c17e47e9816a9a49c9d265b9fd6c4f",
+      "size" : 8788,
+      "supportedApplications" : [
+
+      ],
+      "supportedDeviceModels" : [
+
+      ],
+      "supportedServices" : [
+
+      ],
+      "type" : "iconPack",
+      "version" : "1.0.0"
+    },
+    {
+      "artifactURL" : "http:\/\/127.0.0.1:8765\/org.launchdeck.home-assistant.launchdeckextension",
+      "author" : "LaunchDeck",
+      "description" : "Check a local Home Assistant API or toggle a light. Configure Authorization in Keychain before use.",
+      "id" : "org.launchdeck.home-assistant",
+      "license" : "GPL-3.0-only",
+      "name" : "Home Assistant",
+      "sha256" : "dfe20c32f529e2e28052f33bd73cc9f016320baee19ca6dbf04b761d2ed94785",
+      "size" : 2892,
+      "supportedApplications" : [
+
+      ],
+      "supportedDeviceModels" : [
+
+      ],
+      "supportedServices" : [
+        "Home Assistant"
+      ],
+      "type" : "extensionPackage",
+      "version" : "1.0.0"
+    }
+  ],
+  "schemaVersion" : 1
+}

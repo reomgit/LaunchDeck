@@ -55,6 +55,7 @@ private final class LaunchDeckAppDelegate: NSObject, NSApplicationDelegate, NSWi
             size: NSSize(width: 1_280, height: 860),
             rootView: ContentView().environment(coordinator)
         )
+        installTitlebarControls(on: window)
         editorWindow = window
         activate(window)
     }
@@ -82,15 +83,31 @@ private final class LaunchDeckAppDelegate: NSObject, NSApplicationDelegate, NSWi
     }
 
     private func makeWindow<Content: View>(title: String, size: NSSize, rootView: Content) -> NSWindow {
-        let window = NSWindow(contentViewController: NSHostingController(rootView: rootView))
+        let controller = NSHostingController(rootView: rootView)
+        controller.sizingOptions = []
+        let window = NSWindow(contentViewController: controller)
         window.title = title
-        window.setContentSize(size)
-        window.minSize = size
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        let visible = NSScreen.main?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let preferred = window.frameRect(forContentRect: CGRect(origin: .zero, size: size)).size
+        window.setFrame(EditorWindowGeometry.initialFrame(visibleFrame: visible, preferredSize: preferred), display: false)
+        window.contentMinSize = title == "LaunchDeck" ? NSSize(width: min(920, visible.width - 32), height: min(580, visible.height - 64)) : size
         window.isReleasedWhenClosed = false
         window.delegate = self
-        window.center()
         return window
+    }
+
+    private func installTitlebarControls(on window: NSWindow) {
+        let accessory = NSTitlebarAccessoryViewController()
+        accessory.layoutAttribute = .right
+        accessory.automaticallyAdjustsSize = false
+
+        let hostingView = NSHostingView(rootView: TitlebarStatusControls(coordinator: coordinator))
+        hostingView.sizingOptions = []
+        hostingView.setFrameSize(NSSize(width: 176, height: 30))
+        accessory.view = hostingView
+
+        window.addTitlebarAccessoryViewController(accessory)
     }
 
     private func activate(_ window: NSWindow) {
@@ -111,13 +128,58 @@ private struct MenuBarContent: View {
         Button("Open Editor") {
             showEditor()
         }
+        Button("Extensions…") { showEditor(); coordinator.workflowPanel = .extensions }
+        Button("Community Content…") { showEditor(); coordinator.workflowPanel = .content }
+        Button("Phone / Tablet…") { showEditor(); coordinator.workflowPanel = .companion }
+        if !coordinator.permissions.canPostEvents {
+            Button("Grant Keyboard Access…") {
+                coordinator.permissions.requestAccess()
+            }
+        }
         Toggle("Pause", isOn: Binding(get: { coordinator.isPaused }, set: { coordinator.isPaused = $0 }))
+        Divider()
+        Text(coordinator.runtimeDescription)
+        Button("Auto: Follow Frontmost App") { coordinator.useAutoProfiles() }
+        Menu("Activate Profile") {
+            ForEach(coordinator.configuration.profiles) { profile in
+                Button(profile.name) { coordinator.activateProfile(profile.id) }
+            }
+        }
+        if let error = coordinator.persistenceError { Text(error).foregroundStyle(.red) }
+        if let feedback = coordinator.feedbackMessage { Text(feedback) }
         Divider()
         Text(coordinator.statusText).foregroundStyle(.secondary)
         Button("Quit LaunchDeck") {
             coordinator.shutdown()
             NSApp.terminate(nil)
         }
+    }
+}
+
+private struct TitlebarStatusControls: View {
+    @Bindable var coordinator: AppCoordinator
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: coordinator.midi.connectionName == nil ? "cable.connector.slash" : "cable.connector")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(coordinator.midi.connectionName.map { "Connected to \($0)" } ?? "No Launchpad connected")
+                .help(coordinator.midi.connectionName.map { "Connected to \($0)" } ?? "No Launchpad connected")
+
+            Image(systemName: coordinator.permissions.canPostEvents ? "checkmark.shield" : "lock.shield")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(coordinator.permissions.canPostEvents ? "Keyboard access ready" : "Keyboard access required")
+                .help(coordinator.permissions.canPostEvents ? "Keyboard access ready" : PermissionService.settingsGuidance)
+
+            Toggle("Pause", isOn: $coordinator.isPaused)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .help(coordinator.isPaused ? "Paused · switch off to resume" : "Running · switch on to pause")
+        }
+        .padding(.horizontal, 10)
+        .frame(width: 176, height: 30, alignment: .trailing)
     }
 }
 

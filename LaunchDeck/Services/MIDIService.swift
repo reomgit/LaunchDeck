@@ -13,41 +13,20 @@ private struct MIDI1Message: Sendable {
 
 private struct MIDIInputEvent: Sendable {
     let messages: [MIDI1Message]
-    let generation: Int
-}
-
-private final class MIDIConnectionState: @unchecked Sendable {
-    private let lock = NSLock()
-    private var generation = 0
-
-    func advance() -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        generation += 1
-        return generation
-    }
-
-    func snapshot() -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return generation
-    }
+    let token: Int
 }
 
 /// This object is deliberately independent of `MIDIService`: CoreMIDI invokes
 /// its receive block on a non-main real-time thread.
 private final class MIDIInputReceiver: @unchecked Sendable {
-    private let callbackState: MIDIConnectionState
     private let continuation: AsyncStream<MIDIInputEvent>.Continuation
 
-    init(callbackState: MIDIConnectionState, continuation: AsyncStream<MIDIInputEvent>.Continuation) {
-        self.callbackState = callbackState
+    init(continuation: AsyncStream<MIDIInputEvent>.Continuation) {
         self.continuation = continuation
     }
 
-    func receive(_ eventList: UnsafePointer<MIDIEventList>) {
+    func receive(_ eventList: UnsafePointer<MIDIEventList>, token: Int) {
         var messages = [MIDI1Message]()
-        let generation = callbackState.snapshot()
         var packet = withUnsafePointer(to: eventList.pointee.packet) {
             UnsafeRawPointer($0).assumingMemoryBound(to: MIDIEventPacket.self)
         }
@@ -71,8 +50,14 @@ private final class MIDIInputReceiver: @unchecked Sendable {
         }
 
         guard !messages.isEmpty else { return }
-        continuation.yield(MIDIInputEvent(messages: messages, generation: generation))
+        continuation.yield(MIDIInputEvent(messages: messages, token: token))
     }
+}
+
+struct MIDIDeviceChoice: Identifiable, Hashable, Sendable {
+    let id: Int32
+    let name: String
+    let model: DeviceModel
 }
 
 @MainActor
@@ -80,31 +65,36 @@ private final class MIDIInputReceiver: @unchecked Sendable {
 final class MIDIService {
     private(set) var connectionName: String?
     private(set) var connectionGeneration = 0
-    private(set) var statusMessage = "Searching for Launchpad Mini MK3"
+    private(set) var statusMessage = "Searching for Launchpad"
+    private(set) var devices: [MIDIDeviceChoice] = []
+    private(set) var connectedDevices: [MIDIDeviceChoice] = []
+    private(set) var selectedDeviceUniqueID: Int32?
+    private(set) var connectedModel: DeviceModel?
+
+    var onDevicePadEvent: (@MainActor (MIDIDeviceEvent) -> Void)?
+    var onDevicesChanged: (@MainActor () -> Void)?
 
     var onPadEvent: (@MainActor (PadEvent) -> Void)?
     var onConnectionChanged: (@MainActor (Bool) -> Void)?
 
     @ObservationIgnored private var client = MIDIClientRef()
     @ObservationIgnored private var inputPort = MIDIPortRef()
-    @ObservationIgnored private var source = MIDIEndpointRef()
-    @ObservationIgnored private var destination = MIDIEndpointRef()
-    @ObservationIgnored nonisolated private let callbackState: MIDIConnectionState
+    @ObservationIgnored private var connections = MIDIDeviceConnections()
+    @ObservationIgnored private var facadeDeviceID: Int32?
     @ObservationIgnored nonisolated private let inputReceiver: MIDIInputReceiver
     @ObservationIgnored private var inputTask: Task<Void, Never>?
+    @ObservationIgnored private var isEnabled = false
 
     init() {
-        let callbackState = MIDIConnectionState()
         let (stream, continuation) = AsyncStream.makeStream(
             of: MIDIInputEvent.self,
             bufferingPolicy: .bufferingNewest(128)
         )
-        self.callbackState = callbackState
-        inputReceiver = MIDIInputReceiver(callbackState: callbackState, continuation: continuation)
+        inputReceiver = MIDIInputReceiver(continuation: continuation)
         inputTask = Task { @MainActor [weak self] in
             for await event in stream {
                 guard !Task.isCancelled, let self else { return }
-                self.receive(event.messages, generation: event.generation)
+                self.receive(event.messages, token: event.token)
             }
         }
     }
@@ -114,6 +104,7 @@ final class MIDIService {
     }
 
     func start() {
+        isEnabled = true
         guard client == 0 else {
             connectIfAvailable()
             return
@@ -143,77 +134,109 @@ final class MIDIService {
     }
 
     func stop() {
-        disconnect(restoreLiveMode: true, status: "Disconnected")
+        isEnabled = false
+        let port = inputPort
+        connections.removeAll { connection in
+            // Restore every live unit before disconnecting its source.
+            PendingSysEx(
+                destination: connection.pair.output.endpoint,
+                bytes: DeviceAdapter(model: connection.pair.model).programmerModeOff
+            ).send()
+            MIDIPortDisconnectSource(port, connection.pair.input.endpoint)
+        }
+        publishConnections(status: "Disconnected")
     }
 
     func connectIfAvailable() {
-        guard client != 0, inputPort != 0, source == 0 else { return }
-        let input = endpoints(kind: .source).first(where: isMiniMK3MIDIEndpoint)
-        let output = endpoints(kind: .destination).first(where: isMiniMK3MIDIEndpoint)
-        guard let input, let output else {
-            statusMessage = "Connect Launchpad Mini MK3 MIDI"
-            return
-        }
+        guard isEnabled, client != 0, inputPort != 0 else { return }
+        let pairs = availablePairs()
+        devices = pairs.map { MIDIDeviceChoice(id: $0.input.uniqueID, name: $0.input.name, model: $0.model) }
+        let port = inputPort
+        let changed = connections.update(pairs, connect: { connection in
+            // CoreMIDI copies this opaque token for this specific source lifetime.
+            // No callback may substitute the currently selected device's generation.
+            guard MIDIPortConnectSource(
+                port, connection.pair.input.endpoint,
+                UnsafeMutableRawPointer(bitPattern: connection.token)
+            ) == noErr else { return false }
+            PendingSysEx(destination: connection.pair.output.endpoint, bytes: MiniMK3Adapter.deviceInquiry).send()
+            PendingSysEx(
+                destination: connection.pair.output.endpoint,
+                bytes: DeviceAdapter(model: connection.pair.model).programmerModeOn
+            ).send()
+            return true
+        }, disconnect: { connection in
+            MIDIPortDisconnectSource(port, connection.pair.input.endpoint)
+        })
+        publishConnections(notifyDevicesChanged: changed)
+    }
 
-        guard MIDIPortConnectSource(inputPort, input, nil) == noErr else {
-            statusMessage = "Unable to connect to Launchpad input"
-            return
-        }
-        source = input
-        destination = output
-        connectionGeneration = callbackState.advance()
-        connectionName = endpointName(input)
-        statusMessage = "Connected to \(connectionName ?? "Launchpad Mini MK3")"
-        sendSysEx(MiniMK3Adapter.deviceInquiry)
-        sendSysEx(MiniMK3Adapter.programmerModeOn)
-        onConnectionChanged?(true)
+    func selectDevice(_ uniqueID: Int32?) {
+        guard selectedDeviceUniqueID != uniqueID else { return }
+        selectedDeviceUniqueID = uniqueID
+        updateSelectedFacade()
     }
 
     func sendSysEx(_ bytes: [UInt8]) {
-        guard destination != 0, !bytes.isEmpty else { return }
-        PendingSysEx(destination: destination, bytes: bytes).send()
+        guard let deviceID = facadeDeviceID else { return }
+        sendSysEx(bytes, to: deviceID)
     }
 
-    private func receive(_ messages: [MIDI1Message], generation: Int) {
+    func sendSysEx(_ bytes: [UInt8], to deviceID: Int32) {
+        guard let connection = connections.connection(for: deviceID), !bytes.isEmpty else { return }
+        PendingSysEx(destination: connection.pair.output.endpoint, bytes: bytes).send()
+    }
+
+    func generation(for deviceID: Int32) -> Int? {
+        connections.connection(for: deviceID)?.generation
+    }
+
+    private func receive(_ messages: [MIDI1Message], token: Int) {
+        guard isEnabled else { return }
         for message in messages {
-            guard let event = MiniMK3Adapter.padEvent(
-                status: message.status,
-                data1: message.data1,
-                data2: message.data2,
-                generation: generation
-            ) else { continue }
-            onPadEvent?(event)
+            guard let routed = connections.event(token: token, status: message.status, data1: message.data1, data2: message.data2) else { continue }
+            onDevicePadEvent?(routed)
+            if routed.deviceID == facadeDeviceID, routed.event.generation == connectionGeneration {
+                onPadEvent?(routed.event)
+            }
         }
     }
 
     nonisolated private static func inputReceiveBlock(for receiver: MIDIInputReceiver) -> MIDIReceiveBlock {
-        { eventList, _ in
-            receiver.receive(eventList)
+        { eventList, sourceContext in
+            guard let sourceContext else { return }
+            receiver.receive(eventList, token: Int(bitPattern: sourceContext))
         }
     }
 
     private func refreshConnection() {
-        guard client != 0, inputPort != 0 else { return }
-        if source != 0 {
-            let inputStillAvailable = endpoints(kind: .source).contains(source)
-            let outputStillAvailable = endpoints(kind: .destination).contains(destination)
-            if !inputStillAvailable || !outputStillAvailable {
-                disconnect(restoreLiveMode: false, status: "Launchpad disconnected")
-            }
-        }
         connectIfAvailable()
     }
 
-    private func disconnect(restoreLiveMode: Bool, status: String) {
-        guard source != 0 else { return }
-        if restoreLiveMode { sendSysEx(MiniMK3Adapter.programmerModeOff) }
-        MIDIPortDisconnectSource(inputPort, source)
-        source = 0
-        destination = 0
-        connectionName = nil
-        connectionGeneration = callbackState.advance()
-        statusMessage = status
-        onConnectionChanged?(false)
+    private func publishConnections(status: String? = nil, notifyDevicesChanged: Bool = true) {
+        connectedDevices = connections.connections.map {
+            MIDIDeviceChoice(id: $0.deviceID, name: $0.pair.input.name, model: $0.pair.model)
+        }
+        updateSelectedFacade(status: status)
+        // Consumers see the complete new connection table and selected facade.
+        if notifyDevicesChanged { onDevicesChanged?() }
+    }
+
+    private func updateSelectedFacade(status: String? = nil) {
+        let selected = selectedDeviceUniqueID.flatMap { connections.connection(for: $0) }
+            ?? (selectedDeviceUniqueID == nil ? connections.connections.first : nil)
+        let oldID = facadeDeviceID
+        let oldGeneration = connectionGeneration
+        facadeDeviceID = selected?.deviceID
+        connectionName = selected?.pair.input.name
+        connectedModel = selected?.pair.model
+        connectionGeneration = selected?.generation ?? 0
+        statusMessage = status ?? (connectionName.map { "Connected to \($0)" }
+            ?? (selectedDeviceUniqueID == nil ? "Connect a supported Launchpad MIDI port" : "Selected Launchpad is unavailable"))
+        if oldID != facadeDeviceID || oldGeneration != connectionGeneration {
+            if oldID != nil { onConnectionChanged?(false) }
+            if facadeDeviceID != nil { onConnectionChanged?(true) }
+        }
     }
 
     private enum EndpointKind { case source, destination }
@@ -223,9 +246,17 @@ final class MIDIService {
         return (0..<count).map { kind == .source ? MIDIGetSource($0) : MIDIGetDestination($0) }.filter { $0 != 0 }
     }
 
-    private func isMiniMK3MIDIEndpoint(_ endpoint: MIDIEndpointRef) -> Bool {
-        let name = endpointName(endpoint).lowercased()
-        return name.contains("lpminimk3") && name.contains("midi") && !name.contains("daw")
+    private func availablePairs() -> [MIDIEndpointPair] {
+        let identities = [EndpointKind.source, .destination].flatMap { kind in
+            endpoints(kind: kind).map { endpoint in
+                var entity = MIDIEntityRef(); var device = MIDIDeviceRef(); var uniqueID: Int32 = 0
+                MIDIEndpointGetEntity(endpoint, &entity)
+                if entity != 0 { MIDIEntityGetDevice(entity, &device) }
+                MIDIObjectGetIntegerProperty(endpoint, kMIDIPropertyUniqueID, &uniqueID)
+                return MIDIEndpointIdentity(endpoint: endpoint, uniqueID: uniqueID, device: device, entity: entity, name: endpointName(endpoint), isSource: kind == .source)
+            }
+        }
+        return MIDIEndpointPairing.pairs(identities)
     }
 
     private func endpointName(_ endpoint: MIDIEndpointRef) -> String {

@@ -10,7 +10,9 @@ enum ActionPlanner {
             [.shortcut(shortcut)]
         case let .macro(steps):
             steps
-        case .disabled:
+        case let .step(step):
+            [step]
+        case .disabled, .navigation:
             []
         }
     }

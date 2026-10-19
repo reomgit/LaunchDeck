@@ -1,0 +1,126 @@
+{
+  "actions" : [
+    {
+      "id" : "check-api",
+      "name" : "Check API",
+      "parameters" : [
+        {
+          "choices" : [
+
+          ],
+          "defaultValue" : "http:\/\/localhost:8123",
+          "id" : "baseURL",
+          "name" : "Server URL",
+          "required" : true,
+          "type" : "url"
+        },
+        {
+          "choices" : [
+
+          ],
+          "defaultValue" : "home-assistant-authorization",
+          "id" : "token",
+          "name" : "Authorization secret reference",
+          "required" : true,
+          "type" : "secretReference"
+        }
+      ],
+      "recipe" : [
+        {
+          "httpRequest" : {
+            "_0" : {
+              "allowedHosts" : [
+                "localhost",
+                "127.0.0.1"
+              ],
+              "headers" : {
+
+              },
+              "method" : "GET",
+              "secretHeaders" : {
+                "Authorization" : "{{token}}"
+              },
+              "timeoutSeconds" : 30,
+              "url" : "{{baseURL}}\/api\/"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id" : "toggle-light",
+      "name" : "Toggle Light",
+      "parameters" : [
+        {
+          "choices" : [
+
+          ],
+          "defaultValue" : "http:\/\/localhost:8123",
+          "id" : "baseURL",
+          "name" : "Server URL",
+          "required" : true,
+          "type" : "url"
+        },
+        {
+          "choices" : [
+
+          ],
+          "defaultValue" : "light.office",
+          "id" : "entity",
+          "name" : "Light entity ID",
+          "required" : true,
+          "type" : "string"
+        },
+        {
+          "choices" : [
+
+          ],
+          "defaultValue" : "home-assistant-authorization",
+          "id" : "token",
+          "name" : "Authorization secret reference",
+          "required" : true,
+          "type" : "secretReference"
+        }
+      ],
+      "recipe" : [
+        {
+          "httpRequest" : {
+            "_0" : {
+              "allowedHosts" : [
+                "localhost",
+                "127.0.0.1"
+              ],
+              "body" : "{\"entity_id\":\"{{entity}}\"}",
+              "headers" : {
+                "Content-Type" : "application\/json"
+              },
+              "method" : "POST",
+              "secretHeaders" : {
+                "Authorization" : "{{token}}"
+              },
+              "timeoutSeconds" : 30,
+              "url" : "{{baseURL}}\/api\/services\/light\/toggle"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "allowedHosts" : [
+    "localhost",
+    "127.0.0.1"
+  ],
+  "author" : "LaunchDeck",
+  "id" : "org.launchdeck.home-assistant",
+  "license" : "GPL-3.0-only",
+  "name" : "Home Assistant",
+  "schemaVersion" : 1,
+  "supportedApplications" : [
+
+  ],
+  "supportedServices" : [
+    "Home Assistant REST API"
+  ],
+  "symbolName" : "house.fill",
+  "version" : "1.0.0"
+}

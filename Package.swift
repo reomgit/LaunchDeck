@@ -10,7 +10,11 @@ let package = Package(
         .library(name: "LaunchDeckCore", targets: ["LaunchDeckCore"]),
     ],
     targets: [
-        .target(name: "LaunchDeckCore", path: "LaunchDeck/Core"),
+        .target(
+            name: "LaunchDeckCore", path: "LaunchDeck",
+            exclude: ["EditorView.swift", "ContentView.swift", "LaunchDeckApp.swift", "Info.plist", "Distribution.entitlements", "Assets.xcassets", "Views"],
+            sources: ["Core", "Services", "AppCoordinator.swift"]
+        ),
         .testTarget(name: "LaunchDeckCoreTests", dependencies: ["LaunchDeckCore"]),
     ]
 )
