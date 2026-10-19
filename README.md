@@ -98,9 +98,9 @@ xcodebuild build \
 
 ## Releases
 
-GitHub Actions builds a universal, ad-hoc-signed ZIP on version tags. These are **unnotarized preview builds**. macOS may require the user to approve the app in System Settings before first launch.
+GitHub Actions builds a universal, ad-hoc-signed DMG and ZIP on version tags and publishes them as a GitHub prerelease. These are **unnotarized preview builds**. macOS may require the user to approve the app in System Settings before first launch. The optional **Notarized artifact** workflow builds a signed and notarized DMG and uploads it for download; it does not publish automatically. See [distribution setup](docs/distribution/README.md).
 
-The optional **Notarized artifact** workflow builds, signs, notarizes, staples, assesses, and uploads a universal artifact with source and license after you configure Developer ID credentials. It does not publish automatically. See [distribution setup](docs/distribution/README.md). An actual notarization ticket has not been verified in this session.
+An actual notarization ticket has not been verified in this session.
 
 ## Verification and limits
 

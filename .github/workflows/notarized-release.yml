@@ -44,6 +44,8 @@ jobs:
           xcrun notarytool store-credentials launchdeck-distribution --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --keychain "$signing_keychain" >/dev/null
           release_app="$RUNNER_TEMP/LaunchDeck.xcarchive/Products/Applications/LaunchDeck.app"
           NOTARY_KEYCHAIN="$signing_keychain" scripts/notarize-release.sh "$release_app" "$SIGNING_IDENTITY" launchdeck-distribution
+          scripts/package-dmg.sh "$release_app" LaunchDeck-notarized.dmg
+          shasum -a 256 LaunchDeck-notarized.dmg > LaunchDeck-notarized.dmg.sha256
           ditto -c -k --sequesterRsrc --keepParent "$release_app" LaunchDeck-notarized.zip
           shasum -a 256 LaunchDeck-notarized.zip > LaunchDeck-notarized.zip.sha256
           git archive --format=tar.gz --prefix=LaunchDeck-source/ HEAD > LaunchDeck-source.tar.gz
@@ -55,5 +57,7 @@ jobs:
           path: |
             LaunchDeck-notarized.zip
             LaunchDeck-notarized.zip.sha256
+            LaunchDeck-notarized.dmg
+            LaunchDeck-notarized.dmg.sha256
             LaunchDeck-source.tar.gz
             LaunchDeck-LICENSE

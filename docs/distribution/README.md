@@ -1,6 +1,8 @@
 # Developer ID distribution
 
-Ad-hoc universal previews remain available through the existing version-tag CI. The optional **Notarized artifact** workflow is dispatched explicitly against a branch, tag or commit; it does not create a GitHub release or publish automatically.
+Pushing a `v*` tag runs the universal preview build and publishes a GitHub prerelease containing `LaunchDeck.dmg`, its SHA-256 checksum, and the existing ZIP. The DMG opens to `LaunchDeck.app` and an Applications shortcut for drag-to-install. This preview is ad-hoc signed and unnotarized; macOS may require approval in Privacy & Security before opening it.
+
+The optional **Notarized artifact** workflow is dispatched explicitly against a branch, tag or commit. It signs, notarizes, staples, and assesses the app before packaging it as `LaunchDeck-notarized.dmg`; the workflow uploads the DMG and checksum as an artifact. It does not create or update a GitHub release.
 
 Configure a GitHub `distribution` environment with these secrets:
 
@@ -16,6 +18,8 @@ For local packaging, store credentials first using `xcrun notarytool store-crede
 ```sh
 scripts/notarize-release.sh /path/to/LaunchDeck.app 'Developer ID Application: Your Identity' your-keychain-profile
 ```
+
+To create a drag-to-install disk image from a built app bundle, run `scripts/package-dmg.sh /path/to/LaunchDeck.app /path/to/LaunchDeck.dmg`.
 
 Set `NOTARY_KEYCHAIN` if the profile lives in a custom keychain. The script modifies the supplied app bundle, so use an archive copy. Compile Release with signing disabled before this step; debug `get-task-allow` entitlements must not be retained. LaunchDeck uses no embedded third-party executables; its native shell/AppleScript actions use system interpreters. `Distribution.entitlements` enables Apple Events for explicitly enabled scripting; keyboard access still requires macOS Accessibility permission.
 
