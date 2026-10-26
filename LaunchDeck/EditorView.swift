@@ -96,36 +96,6 @@ struct ProfileIcon: View {
 }
 
 
-struct ShortcutRecorder: NSViewRepresentable {
-    @Binding var shortcut: Shortcut
-
-    func makeNSView(context: Context) -> ShortcutCaptureView {
-        let view = ShortcutCaptureView()
-        view.onShortcut = { shortcut in self.shortcut = shortcut }
-        return view
-    }
-
-    func updateNSView(_ nsView: ShortcutCaptureView, context: Context) {
-        nsView.onShortcut = { shortcut in self.shortcut = shortcut }
-    }
-}
-
-final class ShortcutCaptureView: NSView {
-    var onShortcut: ((Shortcut) -> Void)?
-    override var acceptsFirstResponder: Bool { true }
-    override func mouseDown(with event: NSEvent) { window?.makeFirstResponder(self) }
-    override func keyDown(with event: NSEvent) {
-        guard event.keyCode != 53 else { return }
-        var modifiers = Set<ShortcutModifier>()
-        if event.modifierFlags.contains(.command) { modifiers.insert(.command) }
-        if event.modifierFlags.contains(.option) { modifiers.insert(.option) }
-        if event.modifierFlags.contains(.control) { modifiers.insert(.control) }
-        if event.modifierFlags.contains(.shift) { modifiers.insert(.shift) }
-        let label = event.charactersIgnoringModifiers?.uppercased() ?? "Key \(event.keyCode)"
-        onShortcut?(Shortcut(keyCode: event.keyCode, modifiers: modifiers, keyLabel: label))
-    }
-}
-
 struct AssignmentPayload: Codable, Transferable {
     let label: String
     let color: PadColor
