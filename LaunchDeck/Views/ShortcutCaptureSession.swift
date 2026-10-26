@@ -11,6 +11,8 @@ final class ShortcutCaptureSession {
     enum State: Equatable {
         case idle
         case capturing
+        case accessibilityRequired
+        case inputMonitoringRequired
         case unavailable(String)
     }
 
@@ -20,14 +22,19 @@ final class ShortcutCaptureSession {
     @ObservationIgnored private var tap: CFMachPort?
     @ObservationIgnored private var source: CFRunLoopSource?
 
-    func begin(initialShortcut: Shortcut) {
+    func begin(initialShortcut: Shortcut, accessibilityTrusted: Bool) {
         cancel()
         pendingShortcut = initialShortcut
+
+        guard accessibilityTrusted else {
+            state = .accessibilityRequired
+            return
+        }
 
         if !CGPreflightListenEventAccess() {
             _ = CGRequestListenEventAccess()
             guard CGPreflightListenEventAccess() else {
-                state = .unavailable("Input Monitoring access is required. Enable LaunchDeck in System Settings → Privacy & Security → Input Monitoring.")
+                state = .inputMonitoringRequired
                 return
             }
         }
@@ -51,7 +58,7 @@ final class ShortcutCaptureSession {
             },
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
-            fail("Keyboard capture could not start. Check Input Monitoring in System Settings → Privacy & Security.")
+            fail("Keyboard capture could not start.")
             return
         }
 
@@ -71,7 +78,7 @@ final class ShortcutCaptureSession {
 
         CGEvent.tapEnable(tap: newTap, enable: true)
         guard CGEvent.tapIsEnabled(tap: newTap) else {
-            fail("Keyboard capture could not start. Check Input Monitoring in System Settings → Privacy & Security.")
+            fail("Keyboard capture could not be enabled.")
             return
         }
 
@@ -92,7 +99,7 @@ final class ShortcutCaptureSession {
 
     private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            fail("Keyboard capture stopped. Check Input Monitoring in System Settings → Privacy & Security, then try again.")
+            fail("macOS stopped keyboard capture.")
             return Unmanaged.passUnretained(event)
         }
 
@@ -110,12 +117,23 @@ final class ShortcutCaptureSession {
 
                 let characters = NSEvent(cgEvent: event)?.charactersIgnoringModifiers
                 let label: String
-                if keyCode == 53 {
+                switch keyCode {
+                case 53:
                     label = "ESC"
-                } else if let characters, !characters.isEmpty {
-                    label = characters.uppercased()
-                } else {
-                    label = "Key \(keyCode)"
+                case 48:
+                    label = "TAB"
+                case 36:
+                    label = "RETURN"
+                case 76:
+                    label = "ENTER"
+                default:
+                    if let characters,
+                       !characters.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                       characters.rangeOfCharacter(from: .controlCharacters) == nil {
+                        label = characters.uppercased()
+                    } else {
+                        label = "Key \(keyCode)"
+                    }
                 }
                 pendingShortcut = Shortcut(keyCode: keyCode, modifiers: modifiers, keyLabel: label)
             }

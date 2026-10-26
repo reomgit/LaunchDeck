@@ -90,6 +90,7 @@ struct PadInspector: View {
 }
 
 struct ShortcutField: View {
+    @Environment(AppCoordinator.self) private var coordinator
     let shortcut: Shortcut
     let update: (Shortcut) -> Void
     @State private var isCapturing = false
@@ -108,13 +109,14 @@ struct ShortcutField: View {
         .accessibilityValue(shortcut.displayName)
         .help("Click to record a shortcut")
         .sheet(isPresented: $isCapturing, onDismiss: { session.cancel() }) {
-            ShortcutCaptureSheet(shortcut: shortcut, session: session, done: finishCapture, cancel: cancelCapture)
+            ShortcutCaptureSheet(shortcut: shortcut, session: session, done: finishCapture, cancel: cancelCapture, requestAccessibility: requestAccessibility)
                 .onAppear {
                     guard isCapturing, NSApplication.shared.isActive else {
                         cancelCapture()
                         return
                     }
-                    session.begin(initialShortcut: shortcut)
+                    coordinator.permissions.refresh()
+                    session.begin(initialShortcut: shortcut, accessibilityTrusted: coordinator.permissions.accessibilityTrusted)
                     // A permission prompt can deactivate the app while begin is running.
                     if !isCapturing || !NSApplication.shared.isActive { cancelCapture() }
                 }
@@ -140,6 +142,11 @@ struct ShortcutField: View {
         session.cancel()
         isCapturing = false
     }
+
+    private func requestAccessibility() {
+        coordinator.permissions.requestAccess()
+        cancelCapture()
+    }
 }
 
 private struct ShortcutCaptureSheet: View {
@@ -147,6 +154,7 @@ private struct ShortcutCaptureSheet: View {
     let session: ShortcutCaptureSession
     let done: () -> Void
     let cancel: () -> Void
+    let requestAccessibility: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -182,12 +190,28 @@ private struct ShortcutCaptureSheet: View {
                 Text("Press a key with the desired modifiers. Pressing another key replaces the pending shortcut, including Escape and Return. Click Done to save or Cancel to discard.")
                     .font(.callout).foregroundStyle(.secondary)
             }
+        case .accessibilityRequired:
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Keyboard access required", systemImage: "lock.shield")
+                    .foregroundStyle(.orange)
+                Text(PermissionService.settingsGuidance).font(.callout)
+                Text("After granting access, reopen shortcut capture.")
+                    .font(.callout).foregroundStyle(.secondary)
+                Button("Request Keyboard Access", action: requestAccessibility)
+            }
+        case .inputMonitoringRequired:
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Input Monitoring access required", systemImage: "lock.shield")
+                    .foregroundStyle(.orange)
+                Text("Enable LaunchDeck in System Settings → Privacy & Security → Input Monitoring, then close this sheet and reopen shortcut capture.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
         case let .unavailable(reason):
             VStack(alignment: .leading, spacing: 8) {
                 Label("Keyboard capture unavailable", systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
                 Text(reason).font(.callout)
-                Text("Check LaunchDeck in System Settings → Privacy & Security → Input Monitoring, then close this sheet and try again.")
+                Text("Close this sheet and reopen shortcut capture to try again.")
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
