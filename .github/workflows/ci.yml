@@ -20,6 +20,12 @@ jobs:
           swift --version
       - name: Run core tests
         run: swift test
+      - name: Run companion tests and validate packaging inputs
+        run: |
+          node --test Tests/*.test.mjs
+          plutil -lint LaunchDeck/Info.plist LaunchDeck/Distribution.entitlements
+          bash -n scripts/package-dmg.sh scripts/notarize-release.sh
+          git diff --check
       - name: Build arm64 app
         run: >-
           xcodebuild build
@@ -34,6 +40,8 @@ jobs:
     runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Run Intel core tests
+        run: swift test
       - name: Build Intel app
         run: >-
           xcodebuild build
@@ -68,6 +76,9 @@ jobs:
           shasum -a 256 LaunchDeck.zip > LaunchDeck.zip.sha256
           scripts/package-dmg.sh "$APP" LaunchDeck.dmg
           shasum -a 256 LaunchDeck.dmg > LaunchDeck.dmg.sha256
+          codesign --verify --deep --strict "$APP"
+          xcrun lipo -verify_arch arm64 "$APP/Contents/MacOS/LaunchDeck"
+          xcrun lipo -verify_arch x86_64 "$APP/Contents/MacOS/LaunchDeck"
       - name: Publish unnotarized preview
         env:
           GH_TOKEN: ${{ github.token }}
@@ -75,5 +86,5 @@ jobs:
           gh release create "$GITHUB_REF_NAME"
           LaunchDeck.dmg LaunchDeck.dmg.sha256 LaunchDeck.zip LaunchDeck.zip.sha256
           --prerelease
-          --title "$GITHUB_REF_NAME"
-          --notes "Unnotarized preview build. Grant Accessibility access after launch."
+          --title "LaunchDeck $GITHUB_REF_NAME"
+          --notes-file "docs/releases/$GITHUB_REF_NAME.md"

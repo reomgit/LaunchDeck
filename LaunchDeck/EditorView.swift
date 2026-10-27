@@ -54,7 +54,7 @@ struct LaunchDeckEditor: View {
         }
         .frame(minWidth: 920, minHeight: 580)
         .environment(\.appearsActive, true)
-        .allowsWindowActivationEvents()
+        .allowsWindowActivationEvents(true)
         .onAppear { coordinator.setUndoManager(undoManager); coordinator.startLightingPreview() }
         .onDisappear { coordinator.stopLightingPreview() }
     }

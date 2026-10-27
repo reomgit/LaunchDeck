@@ -17,6 +17,8 @@
 
 ## [PROGRESS]
 
+- 2026-10-27T15:47Z [USER+TOOL] Preparing v0.2.0-alpha.1 release per explicit request to test, push and publish changelog since Alpha. Previous release Alpha/"First MVP." has no binaries. Diagnosed latest GitHub CI failures: objectVersion110 incompatible with Intel Xcode26.6; fixed audio health-check sleep test deadline. Restored project format77, Swift6.2-compatible isolated shortcut deinit/window-click API; added companion/packaging checks and Intel core tests to CI. Local Debug and optimized suites each pass194 Swift tests; companion10pass; universal Debug/Release builds pass. Ad-hoc universal archive signature and both architecture slices verified; DMG checksum verified. Tag/release remain pending hosted CI. Release notes: docs/releases/v0.2.0-alpha.1.md; app version0.2.0/build2.
+
 - 2026-10-27T14:12Z [CODE+TOOL] On main, local uncommitted fixes resolve ShortcutCaptureSession's Sendable build error by returning Bool from assumeIsolated; Xcode recommended settings applied. Restored previously excluded regular/accessory activation policy and added Dock reopen/minimized-window restoration. Debug builds pass. appearsActive and materialActiveAppearance do not preserve glass tint in the observed inactive editor; inactive-glass appearance remains unresolved. Original glass rendering restored and running; no commits/pushes made for these fixes.
 
 - 2026-09-26T14:46Z [CODE] Implemented SwiftUI editor, CoreMIDI Mini MK3 adapter, app-aware resolver, Accessibility-gated keyboard executor, JSON persistence, menu-bar lifecycle, core tests, and GitHub Actions workflow.

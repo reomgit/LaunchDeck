@@ -189,7 +189,10 @@ struct AudioReactiveTests {
         let monitor = AudioReactiveMonitor(dependencies: input.dependencies)
         await monitor.enable()
         input.authorization = .denied
-        try await Task.sleep(for: .milliseconds(1_200))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while monitor.isCapturing && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
         #expect(!monitor.isCapturing)
         #expect(monitor.level == 0)
         #expect(input.stopCalls == 1)

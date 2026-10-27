@@ -166,7 +166,7 @@ final class ShortcutCaptureSession {
 
     private static let modifierKeyCodes: Set<UInt16> = [54, 55, 56, 57, 58, 59, 60, 61, 62, 63]
 
-    @MainActor deinit {
+    isolated deinit {
         stopTap()
     }
 }

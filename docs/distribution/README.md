@@ -2,6 +2,8 @@
 
 Pushing a `v*` tag runs the universal preview build and publishes a GitHub prerelease containing `LaunchDeck.dmg`, its SHA-256 checksum, and the existing ZIP. The DMG opens to `LaunchDeck.app` and an Applications shortcut for drag-to-install. This preview is ad-hoc signed and unnotarized; macOS may require approval in Privacy & Security before opening it.
 
+Before tagging, add release notes at `docs/releases/<tag>.md` with changes since the previous release and update the app version/build in the Xcode project. CI tests the Swift core on Apple silicon and Intel, runs the companion JavaScript tests, validates packaging inputs, and builds both architectures. The tag job archives a universal Release app, verifies its signature and architecture slices, and publishes only after those checks pass. Release notes are taken from the checked-in file.
+
 The optional **Notarized artifact** workflow is dispatched explicitly against a branch, tag or commit. It signs, notarizes, staples, and assesses the app before packaging it as `LaunchDeck-notarized.dmg`; the workflow uploads the DMG and checksum as an artifact. It does not create or update a GitHub release.
 
 Configure a GitHub `distribution` environment with these secrets:
