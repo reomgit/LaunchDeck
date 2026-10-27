@@ -32,6 +32,8 @@
 
 ## [DISCOVERIES]
 
+- 2026-10-27T16:05Z [TOOL+CODE] Main CI40535835053 passed both architectures, but v0.2.0-alpha.1 tag run40536737245 caught a fixed60ms lighting assertion racing renderer coalescing. No release was published. Injected the existing LEDRenderer dependency into AppCoordinator (identical production default); lighting integration tests now use its controlled clock/manual ticks. Full Debug194pass and universal Debug/Release builds pass. Next release candidate is v0.2.0-alpha.2, bundle0.2.0/build3; old unreleased tag preserved.
+
 - 2026-10-27T15:56Z [TOOL+CODE] Hosted run40535287215 reproduced selectedPort test flake seen once locally: the probe released an ephemeral port that parallel outbound connections could claim before NWListener bound it. Test now probes unused ports20000–30000 outside macOS's automatic49152–65535 range, waits up to5s for listener readiness, and reports listener status on failure. Full local Debug suite194pass after fix; no server production behavior changed.
 
 - 2026-10-27T15:52Z [TOOL+CODE] Hosted run40534590848 passed arm64 Swift/client tests but Swift6.3.3 crashed generating an actor-isolation thunk for Binding's optional Int32 setter in DeviceWorkflowControls. Replaced direct actor-isolated picker setter references with explicit closures (device/model/page/press effect). Local universal Debug rebuild passes; hosted confirmation pending. Release tag still not published.

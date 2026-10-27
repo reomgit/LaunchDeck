@@ -12,7 +12,9 @@ struct LightingIntegrationTests {
         ])]))
         var waiting: CheckedContinuation<Void, Never>?
         let executor = ActionExecutor(dependencies: .init(canPostEvents: { true }, frontmostProcessID: { 42 }, perform: { _ in nil }, postShortcut: { _ in }, postText: { _ in }, sleep: { _ in await withCheckedContinuation { waiting = $0 } }))
-        let coordinator = AppCoordinator(profileStore: store, actionExecutor: executor)
+        var time: TimeInterval = 0
+        let renderer = LEDRenderer(model: { .virtual }, send: { _ in }, clock: { time }, automaticallyAnimate: false)
+        let coordinator = AppCoordinator(profileStore: store, actionExecutor: executor, companionRenderer: renderer)
         defer { coordinator.shutdown() }
         try coordinator.companion.start(loopbackOnly: true)
         for _ in 0..<200 where !coordinator.companion.isRunning { try await Task.sleep(for: .milliseconds(5)) }
@@ -20,12 +22,14 @@ struct LightingIntegrationTests {
         let before = coordinator.companionSnapshot()
         #expect(coordinator.pressCompanion(index: 0, revision: before.revision, pageID: before.pageID) == nil)
         while waiting == nil { await Task.yield() }
-        try await Task.sleep(for: .milliseconds(60))
+        time = 0.1
+        renderer.tick()
         coordinator.createPage(name: "Unrelated")
         #expect(coordinator.companionSnapshot().controls[0].color != "#3CB4FF")
         waiting?.resume()
         while executor.isRunning { await Task.yield() }
-        try await Task.sleep(for: .milliseconds(60))
+        time = 0.2
+        renderer.tick()
         #expect(coordinator.companionSnapshot().controls[0].color == "#30FF8C")
     }
 
@@ -38,7 +42,9 @@ struct LightingIntegrationTests {
         ])]))
         var waiting: CheckedContinuation<Void, Never>?
         let executor = ActionExecutor(dependencies: .init(canPostEvents: { true }, frontmostProcessID: { 42 }, perform: { _ in nil }, postShortcut: { _ in }, postText: { _ in }, sleep: { _ in await withCheckedContinuation { waiting = $0 } }))
-        let coordinator = AppCoordinator(profileStore: store, actionExecutor: executor)
+        var time: TimeInterval = 0
+        let renderer = LEDRenderer(model: { .virtual }, send: { _ in }, clock: { time }, automaticallyAnimate: false)
+        let coordinator = AppCoordinator(profileStore: store, actionExecutor: executor, companionRenderer: renderer)
         defer { coordinator.shutdown() }
         try coordinator.companion.start(loopbackOnly: true)
         for _ in 0..<200 where !coordinator.companion.isRunning { try await Task.sleep(for: .milliseconds(5)) }
@@ -50,7 +56,8 @@ struct LightingIntegrationTests {
         coordinator.updateSelectedBinding(label: "After", color: .orange, action: .shortcut(.paste))
         waiting?.resume()
         while executor.isRunning { await Task.yield() }
-        try await Task.sleep(for: .milliseconds(60))
+        time = 0.1
+        renderer.tick()
         #expect(coordinator.companionSnapshot().controls[0].color == "#FF8414")
     }
 

@@ -30,7 +30,7 @@ final class AppCoordinator {
     let contentLibrary: ContentLibraryService?
     let companion = CompanionServer()
     let lighting = DeckLightingController()
-    private let companionRenderer = LEDRenderer(model: { .virtual }, send: { _ in })
+    private let companionRenderer: LEDRenderer
     private var companionColors: [Int: PadColor] = [:]
     private var companionRenderedRevision: Int?
     private var companionLightingLayout: ResolvedLayout?
@@ -76,7 +76,9 @@ final class AppCoordinator {
     @ObservationIgnored private var canPersist = true
 
     init(profileStore: ProfileStore = ProfileStore(), sessionMonitor: WorkspaceSessionMonitor = WorkspaceSessionMonitor(),
-         actionExecutor: ActionExecutor = ActionExecutor(), appMonitor: ActiveAppMonitor = ActiveAppMonitor()) {
+         actionExecutor: ActionExecutor = ActionExecutor(), appMonitor: ActiveAppMonitor = ActiveAppMonitor(),
+         companionRenderer: LEDRenderer = LEDRenderer(model: { .virtual }, send: { _ in })) {
+        self.companionRenderer = companionRenderer
         self.profileStore = profileStore
         self.appMonitor = appMonitor
         scriptApprovals = ScriptApprovalStore(directory: profileStore.directory)
