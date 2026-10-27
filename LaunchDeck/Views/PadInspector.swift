@@ -90,13 +90,131 @@ struct PadInspector: View {
 }
 
 struct ShortcutField: View {
+    @Environment(AppCoordinator.self) private var coordinator
     let shortcut: Shortcut
     let update: (Shortcut) -> Void
+    @State private var isCapturing = false
+    @State private var session = ShortcutCaptureSession()
+
     var body: some View {
-        ShortcutRecorder(shortcut: Binding(get: { shortcut }, set: { update($0) })).frame(height: 30)
-            .overlay { Text(shortcut.displayName).font(.body.monospaced()).allowsHitTesting(false) }
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
-            .help("Click, then press the desired shortcut")
+        Button { isCapturing = true } label: {
+            Text(shortcut.displayName)
+                .font(.body.monospaced())
+                .frame(maxWidth: .infinity, minHeight: 30)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
+                .contentShape(RoundedRectangle(cornerRadius: 7))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Edit shortcut")
+        .accessibilityValue(shortcut.displayName)
+        .help("Click to record a shortcut")
+        .sheet(isPresented: $isCapturing, onDismiss: { session.cancel() }) {
+            ShortcutCaptureSheet(shortcut: shortcut, session: session, done: finishCapture, cancel: cancelCapture, requestAccessibility: requestAccessibility)
+                .onAppear {
+                    guard isCapturing, NSApplication.shared.isActive else {
+                        cancelCapture()
+                        return
+                    }
+                    coordinator.permissions.refresh()
+                    session.begin(initialShortcut: shortcut, accessibilityTrusted: coordinator.permissions.accessibilityTrusted)
+                    // A permission prompt can deactivate the app while begin is running.
+                    if !isCapturing || !NSApplication.shared.isActive { cancelCapture() }
+                }
+                .onDisappear { session.cancel() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            if isCapturing { cancelCapture() }
+        }
+        .onDisappear { cancelCapture() }
+    }
+
+    private func finishCapture() {
+        guard isCapturing, NSApplication.shared.isActive else {
+            cancelCapture()
+            return
+        }
+        let capturedShortcut = session.finish()
+        isCapturing = false
+        if let capturedShortcut { update(capturedShortcut) }
+    }
+
+    private func cancelCapture() {
+        session.cancel()
+        isCapturing = false
+    }
+
+    private func requestAccessibility() {
+        coordinator.permissions.requestAccess()
+        cancelCapture()
+    }
+}
+
+private struct ShortcutCaptureSheet: View {
+    let shortcut: Shortcut
+    let session: ShortcutCaptureSession
+    let done: () -> Void
+    let cancel: () -> Void
+    let requestAccessibility: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Record Shortcut").font(.title2.weight(.semibold))
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Pending shortcut").font(.caption).foregroundStyle(.secondary)
+                Text(session.pendingShortcut?.displayName ?? shortcut.displayName)
+                    .font(.title.monospaced())
+                    .frame(maxWidth: .infinity, minHeight: 60)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+            }
+            captureStatus
+            HStack {
+                Spacer()
+                Button("Cancel", action: cancel)
+                Button("Done", action: done)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(session.state != .capturing)
+            }
+        }
+        .padding(24)
+        .frame(width: 420)
+    }
+
+    @ViewBuilder
+    private var captureStatus: some View {
+        switch session.state {
+        case .idle:
+            Text("Preparing keyboard capture…").foregroundStyle(.secondary)
+        case .capturing:
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Capturing keyboard input", systemImage: "record.circle")
+                Text("Press a key with the desired modifiers. Pressing another key replaces the pending shortcut, including Escape and Return. Click Done to save or Cancel to discard.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        case .accessibilityRequired:
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Keyboard access required", systemImage: "lock.shield")
+                    .foregroundStyle(.orange)
+                Text(PermissionService.settingsGuidance).font(.callout)
+                Text("After granting access, reopen shortcut capture.")
+                    .font(.callout).foregroundStyle(.secondary)
+                Button("Request Keyboard Access", action: requestAccessibility)
+            }
+        case .inputMonitoringRequired:
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Input Monitoring access required", systemImage: "lock.shield")
+                    .foregroundStyle(.orange)
+                Text("Enable LaunchDeck in System Settings → Privacy & Security → Input Monitoring, then close this sheet and reopen shortcut capture.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        case let .unavailable(reason):
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Keyboard capture unavailable", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                Text(reason).font(.callout)
+                Text("Close this sheet and reopen shortcut capture to try again.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        }
     }
 }
 
