@@ -52,9 +52,10 @@ final class ShortcutCaptureSession {
                 guard let userInfo else { return Unmanaged.passUnretained(event) }
                 let session = Unmanaged<ShortcutCaptureSession>.fromOpaque(userInfo).takeUnretainedValue()
                 // This tap's source is attached only to the main run loop.
-                return MainActor.assumeIsolated {
+                let consumed = MainActor.assumeIsolated {
                     session.handle(type: type, event: event)
                 }
+                return consumed ? nil : Unmanaged.passUnretained(event)
             },
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
@@ -97,13 +98,14 @@ final class ShortcutCaptureSession {
         state = .idle
     }
 
-    private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+    /// Returns whether the event should be consumed by the capture session.
+    private func handle(type: CGEventType, event: CGEvent) -> Bool {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             fail("macOS stopped keyboard capture.")
-            return Unmanaged.passUnretained(event)
+            return false
         }
 
-        guard state == .capturing else { return Unmanaged.passUnretained(event) }
+        guard state == .capturing else { return false }
 
         if type == .keyDown {
             let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
@@ -140,7 +142,7 @@ final class ShortcutCaptureSession {
         }
 
         // Key-up and flags-changed events are also consumed during capture.
-        return nil
+        return true
     }
 
     private func fail(_ message: String) {

@@ -24,3 +24,11 @@ The override affects appearance only. Existing `.disabled(...)` conditions conti
 ## Scope
 
 Only the editor appearance environment and its separately hosted titlebar status controls need changes. No coordinator, profile, device, or action behavior changes are required.
+
+## Verified follow-up — 2026-10-27
+
+The environment override alone did not retain Liquid Glass tint in the running inactive editor. Preserve the existing native `.glassEffect`, `GlassEffectContainer`, shapes, and window chrome. Add a 60%-opacity color backdrop behind each glass pad and the Novation tile so their colors remain visible when macOS suppresses the glass tint. This is a backdrop for real glass, not a replacement material; native glass can still adapt to window focus. Keep inherited opacity and existing disabled rules unchanged. Allow window-activation clicks in the editor and hosted titlebar controls.
+
+Restore regular app activation while an editor or About window is open, accessory activation after the last closes, and editor reopening/restoration from the Dock. Keep the menu bar entry available.
+
+Verification: Debug Xcode build succeeded. In the relaunched signed app, native UI inspection with Finder active confirmed colored glass pads remain visible; button accessibility and assignments were preserved. No application test suite was run for this presentation change.

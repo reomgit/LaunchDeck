@@ -44,6 +44,11 @@ private final class LaunchDeckAppDelegate: NSObject, NSApplicationDelegate, NSWi
         false
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showEditor()
+        return false
+    }
+
     func showEditor() {
         if let editorWindow {
             activate(editorWindow)
@@ -80,6 +85,9 @@ private final class LaunchDeckAppDelegate: NSObject, NSApplicationDelegate, NSWi
         guard let window = notification.object as? NSWindow else { return }
         if window == editorWindow { editorWindow = nil }
         if window == aboutWindow { aboutWindow = nil }
+        if editorWindow == nil && aboutWindow == nil {
+            _ = NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     private func makeWindow<Content: View>(title: String, size: NSSize, rootView: Content) -> NSWindow {
@@ -111,6 +119,8 @@ private final class LaunchDeckAppDelegate: NSObject, NSApplicationDelegate, NSWi
     }
 
     private func activate(_ window: NSWindow) {
+        _ = NSApp.setActivationPolicy(.regular)
+        if window.isMiniaturized { window.deminiaturize(nil) }
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
     }
@@ -176,6 +186,7 @@ private struct TitlebarStatusControls: View {
                 .help(coordinator.isPaused ? "Paused · switch off to resume" : "Running · switch on to pause")
         }
         .environment(\.appearsActive, true)
+        .allowsWindowActivationEvents()
         .padding(.horizontal, 10)
         .frame(width: 176, height: 30, alignment: .trailing)
     }

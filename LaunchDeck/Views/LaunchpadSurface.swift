@@ -78,6 +78,7 @@ private struct SurfaceCorner: View {
             .fill(Color(red: 0.08, green: 0.09, blue: 0.09))
             .padding(11)
             .glassEffect(.regular.tint(Color(red: 0.80, green: 0.81, blue: 0.82)), in: .rect(cornerRadius: 5))
+            .background(Color(red: 0.80, green: 0.81, blue: 0.82).opacity(0.6), in: .rect(cornerRadius: 5))
             .accessibilityLabel("Novation logo")
             .accessibilityHidden(true)
     }
@@ -165,6 +166,8 @@ private struct PadCell: View {
             .contentShape(.rect)
             .foregroundStyle(foregroundColor)
             .glassEffect(.regular.tint(faceColor), in: .rect(cornerRadius: style == .pad ? 5 : 4))
+            // Keep color behind the native glass when macOS suppresses its tint in inactive windows.
+            .background(faceColor.opacity(0.6), in: .rect(cornerRadius: style == .pad ? 5 : 4))
             .shadow(color: .black.opacity(0.48), radius: 1, x: 0, y: 1)
             .opacity(inherited ? 0.72 : 1)
         }

@@ -8,12 +8,16 @@
 
 ## [DECISIONS]
 
+- 2026-10-27T14:12Z [USER] Preserve native Liquid Glass buttons and window styling while fixing inactive-window appearance. User rejected replacement color/gradient pad faces; restored LaunchpadSurface.swift exactly to HEAD and rebuilt/reopened the signed app. Do not substitute flat/custom fills for glass.
+
 - 2026-10-06T00:00Z [USER] “Sure, just you decide everything.” Approves remaining design decisions and implementation; supersedes pending design-review blocker. Selected recommended manifest extensions, configurable community catalog, Mini/X/Pro adapters and browser companion. Full plan/ownership/contracts: `.agent/workflows/eventual-implementation.md`. Goal work resumed; fresh blocked audit if external dependencies later persist.
 - 2026-09-26T14:38Z [USER] Target macOS 26+, Swift-only implementation, Launchpad Mini MK3, GPL-3.0-only, shortcut-and-delay macros, and GitHub preview releases without paid signing.
 - 2026-09-30T09:03Z [USER] Manual activation persists until Auto is selected; navigation actions assignable to any control. Changes extend the existing dirty checkout, on `codex/desktop-workflows`.
 - 2026-09-30T09:03Z [CODE] Version 2 adds explicit profile kinds, stable folder/page IDs and order overrides; v1 migration creates an untouched backup. `.launchdeckprofile` is a single JSON file with embedded normalized PNG assets and an independent effective layout.
 
 ## [PROGRESS]
+
+- 2026-10-27T14:12Z [CODE+TOOL] On main, local uncommitted fixes resolve ShortcutCaptureSession's Sendable build error by returning Bool from assumeIsolated; Xcode recommended settings applied. Restored previously excluded regular/accessory activation policy and added Dock reopen/minimized-window restoration. Debug builds pass. appearsActive and materialActiveAppearance do not preserve glass tint in the observed inactive editor; inactive-glass appearance remains unresolved. Original glass rendering restored and running; no commits/pushes made for these fixes.
 
 - 2026-09-26T14:46Z [CODE] Implemented SwiftUI editor, CoreMIDI Mini MK3 adapter, app-aware resolver, Accessibility-gated keyboard executor, JSON persistence, menu-bar lifecycle, core tests, and GitHub Actions workflow.
 - 2026-09-26T14:46Z [TOOL] `swift test` passed 9 core tests; arm64 and x86_64 Xcode builds succeeded. A universal archive was ad-hoc signed, verified, zipped, and checksummed.
@@ -35,6 +39,8 @@
 - 2026-10-05T15:42Z [TOOL] An unowned Xcode project rewrite appeared during checks: objectVersion 77 → 110, reordered exception section/settings. Preserved it. Local Xcode builds accept it; verify hosted CI compatibility before release because earlier Xcode 26.6 rejected 110.
 
 ## [OUTCOMES]
+
+- 2026-10-27T14:32Z [CODE+TOOL] Supersedes unresolved inactive-glass note above: preserved all native glassEffect calls/GlassEffectContainer and added 60%-opacity color backdrops behind pads and Novation tile. Live signed build retains visible colored glass with Finder active. Removed ineffective materialActiveAppearance experiment; retained appearsActive and enabled window-activation clicks. No assignment/disabled-condition changes. Xcode Debug build passes; no app test suite run for presentation-only work. Changes remain local/uncommitted on main, alongside compiler/project-setting and Dock lifecycle fixes.
 
 - 2026-10-05T15:44:24Z [TOOL] Blocked audit: proposed design approval is still absent across three consecutive goal turns. First turn recorded the design/full scope; second made independent progress on the previously approved sleep/session requirement; current turn revalidated unchanged design status and no new human approval. Full eventual scope remains unimplemented. Marking goal blocked pending approval/change requests for extension format, additional device models and companion platform, as explicitly required by brainstorming SKILL.md. Do not treat automatic continuations as approval.
 - 2026-09-26T14:51Z [TOOL] Published the implementation at https://github.com/reomgit/LaunchDeck on `main` (commit `4a6bb1d`).
