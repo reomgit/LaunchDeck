@@ -11,7 +11,7 @@ struct DeviceWorkflowControls: View {
     private var panelHeight: CGFloat { min(620, (NSScreen.main?.visibleFrame.height ?? 800) - 120) }
     var body: some View {
         HStack {
-            Picker("Preview Model", selection: Binding(get: { coordinator.editorModel }, set: coordinator.selectEditorModel)) {
+            Picker("Preview Model", selection: Binding(get: { coordinator.editorModel }, set: { coordinator.selectEditorModel($0) })) {
                 ForEach(DeviceModel.allCases, id: \.self) { Text($0.displayName).tag($0) }
             }
             .labelsHidden().frame(minWidth: 130, idealWidth: 170, maxWidth: 200)
@@ -20,7 +20,7 @@ struct DeviceWorkflowControls: View {
                 .font(.caption).foregroundStyle(.secondary)
             Menu("Tools") {
                 Button("Auto-Detect Model", systemImage: "cable.connector") { coordinator.followConnectedHardware() }
-                Picker("View Connected Device", selection: Binding(get: { coordinator.configuration.selectedDeviceUniqueID }, set: coordinator.selectHardware)) {
+                Picker("View Connected Device", selection: Binding(get: { coordinator.configuration.selectedDeviceUniqueID }, set: { coordinator.selectHardware($0) })) {
                     Text("Automatic").tag(Int32?.none)
                     ForEach(coordinator.midi.connectedDevices) { device in Text("\(device.name) · \(device.id)").tag(Optional(device.id)) }
                     if let id = coordinator.configuration.selectedDeviceUniqueID, !coordinator.midi.devices.contains(where: { $0.id == id }) {

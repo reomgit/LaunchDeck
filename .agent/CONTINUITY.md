@@ -32,6 +32,8 @@
 
 ## [DISCOVERIES]
 
+- 2026-10-27T15:52Z [TOOL+CODE] Hosted run40534590848 passed arm64 Swift/client tests but Swift6.3.3 crashed generating an actor-isolation thunk for Binding's optional Int32 setter in DeviceWorkflowControls. Replaced direct actor-isolated picker setter references with explicit closures (device/model/page/press effect). Local universal Debug rebuild passes; hosted confirmation pending. Release tag still not published.
+
 - 2026-09-26T14:38Z [TOOL] The project uses Xcode file-system synchronized groups, so new Swift files are automatically included in the app target.
 - 2026-09-26T14:51Z [TOOL] GitHub's Xcode 26.6 runner rejects Xcode project object version 110; object version 77 is compatible with this project structure.
 - 2026-09-26T15:00Z [USER+TOOL] A CoreMIDI callback triggered a Swift MainActor queue assertion. Crash-report evidence showed the callback captured `MIDIService`; it now uses a nonisolated receiver and an `AsyncStream` boundary. Added the exported drag payload UTI to the app Info.plist.

@@ -20,7 +20,7 @@ struct PadInspector: View {
                             guard let rgb = NSColor(color).usingColorSpace(.deviceRGB) else { return }
                             coordinator.updateSelectedBinding(color: PadColor(red: Int((rgb.redComponent * 127).rounded()), green: Int((rgb.greenComponent * 127).rounded()), blue: Int((rgb.blueComponent * 127).rounded())))
                         }), supportsOpacity: false)
-                        Picker("Press animation", selection: Binding<PressEffect?>(get: { binding?.pressEffect }, set: coordinator.setSelectedPressEffect)) {
+                        Picker("Press animation", selection: Binding<PressEffect?>(get: { binding?.pressEffect }, set: { coordinator.setSelectedPressEffect($0) })) {
                             Text("Page Default").tag(Optional<PressEffect>.none)
                             ForEach(PressEffect.allCases, id: \.self) { Text($0.displayName).tag(Optional($0)) }
                         }.disabled(binding == nil || action == .disabled)

@@ -113,7 +113,7 @@ struct DeckManager: View {
     @State private var showRename = false
     var body: some View {
         HStack {
-            Picker("Page", selection: Binding(get: { coordinator.selectedPageID }, set: coordinator.selectPage)) {
+            Picker("Page", selection: Binding(get: { coordinator.selectedPageID }, set: { coordinator.selectPage($0) })) {
                 ForEach(coordinator.editorPages) { page in Text(path(for: page)).tag(page.id) }
             }
             .labelsHidden().frame(minWidth: 100, maxWidth: .infinity).help("Preview page or folder")
