@@ -18,7 +18,7 @@ jobs:
           ref: ${{ inputs.ref }}
       - name: Run tests and build universal archive
         run: |
-          swift test
+          swift test --no-parallel
           node --test Tests/*.test.mjs
           plutil -lint LaunchDeck/Info.plist LaunchDeck/Distribution.entitlements
           bash -n scripts/package-dmg.sh scripts/notarize-release.sh

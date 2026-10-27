@@ -19,7 +19,7 @@ jobs:
           xcodebuild -version
           swift --version
       - name: Run core tests
-        run: swift test
+        run: swift test --no-parallel
       - name: Run companion tests and validate packaging inputs
         run: |
           node --test Tests/*.test.mjs
@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Run Intel core tests
-        run: swift test
+        run: swift test --no-parallel
       - name: Build Intel app
         run: >-
           xcodebuild build

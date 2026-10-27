@@ -189,7 +189,7 @@ extension LightingTests {
         renderer.setAudioLevel(0)
         time = 0.01; renderer.setAudioLevel(1)
         time = 0.04
-        let deadline = ContinuousClock.now.advanced(by: .seconds(1))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
         while frame[63] != .green, ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(10))
         }

@@ -32,6 +32,8 @@
 
 ## [DISCOVERIES]
 
+- 2026-10-27T16:12Z [TOOL+CODE] v0.2.0-alpha.2 architecture jobs passed; concurrent main run exposed LightingTests'1s scheduler deadline. Cancelled tag release before publication. Scheduler assertion now bounded5s; CI/notarized workflow explicitly use swift test --no-parallel to prevent independent timer suites competing on MainActor (all tests remain enabled). Local sequential Debug/Release each194pass and companion10pass. Production code unchanged since successful universal builds. Candidate v0.2.0-alpha.3 includes same0.2.0/build3 app; prior candidate tags preserved without releases.
+
 - 2026-10-27T16:05Z [TOOL+CODE] Main CI40535835053 passed both architectures, but v0.2.0-alpha.1 tag run40536737245 caught a fixed60ms lighting assertion racing renderer coalescing. No release was published. Injected the existing LEDRenderer dependency into AppCoordinator (identical production default); lighting integration tests now use its controlled clock/manual ticks. Full Debug194pass and universal Debug/Release builds pass. Next release candidate is v0.2.0-alpha.2, bundle0.2.0/build3; old unreleased tag preserved.
 
 - 2026-10-27T15:56Z [TOOL+CODE] Hosted run40535287215 reproduced selectedPort test flake seen once locally: the probe released an ephemeral port that parallel outbound connections could claim before NWListener bound it. Test now probes unused ports20000–30000 outside macOS's automatic49152–65535 range, waits up to5s for listener readiness, and reports listener status on failure. Full local Debug suite194pass after fix; no server production behavior changed.
