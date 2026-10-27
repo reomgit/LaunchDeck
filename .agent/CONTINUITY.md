@@ -32,6 +32,8 @@
 
 ## [DISCOVERIES]
 
+- 2026-10-27T15:56Z [TOOL+CODE] Hosted run40535287215 reproduced selectedPort test flake seen once locally: the probe released an ephemeral port that parallel outbound connections could claim before NWListener bound it. Test now probes unused ports20000–30000 outside macOS's automatic49152–65535 range, waits up to5s for listener readiness, and reports listener status on failure. Full local Debug suite194pass after fix; no server production behavior changed.
+
 - 2026-10-27T15:52Z [TOOL+CODE] Hosted run40534590848 passed arm64 Swift/client tests but Swift6.3.3 crashed generating an actor-isolation thunk for Binding's optional Int32 setter in DeviceWorkflowControls. Replaced direct actor-isolated picker setter references with explicit closures (device/model/page/press effect). Local universal Debug rebuild passes; hosted confirmation pending. Release tag still not published.
 
 - 2026-09-26T14:38Z [TOOL] The project uses Xcode file-system synchronized groups, so new Swift files are automatically included in the app target.

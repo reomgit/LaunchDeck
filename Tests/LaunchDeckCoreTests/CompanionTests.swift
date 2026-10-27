@@ -160,11 +160,12 @@ struct CompanionTests {
     func selectedPort() async throws {
         let server = CompanionServer()
         defer { server.stop() }
-        // Select an unused port across interfaces; a hard-coded ephemeral port can
-        // collide with an unrelated outbound connection even without a listener.
+        // Stay outside macOS's automatic outbound-port range: parallel URLSession
+        // tests can otherwise claim the port between this probe and listener startup.
         let port = try availableTCPPort()
         try server.start(port: port, loopbackOnly: true)
-        for _ in 0..<100 {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < deadline {
             if let url = server.urls.first {
                 #expect(url.port == Int(port))
                 #expect(try await request(url, "").1 == 200)
@@ -172,25 +173,28 @@ struct CompanionTests {
             }
             try await Task.sleep(for: .milliseconds(20))
         }
-        Issue.record("The companion did not bind its selected port.")
+        Issue.record("The companion did not bind its selected port: \(server.status)")
     }
 
     private func availableTCPPort() throws -> UInt16 {
         let descriptor = socket(AF_INET, SOCK_STREAM, 0)
         guard descriptor >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
         defer { Darwin.close(descriptor) }
-        var address = sockaddr_in()
-        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
-        address.sin_family = sa_family_t(AF_INET)
-        var size = socklen_t(MemoryLayout<sockaddr_in>.size)
-        let result = withUnsafeMutablePointer(to: &address) { pointer in
-            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { socketAddress in
-                guard Darwin.bind(descriptor, socketAddress, size) == 0 else { return Int32(-1) }
-                return getsockname(descriptor, socketAddress, &size)
+        for _ in 0..<100 {
+            var address = sockaddr_in()
+            address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+            address.sin_family = sa_family_t(AF_INET)
+            let port = UInt16.random(in: 20_000...30_000)
+            address.sin_port = port.bigEndian
+            let result = withUnsafePointer(to: &address) { pointer in
+                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { socketAddress in
+                    Darwin.bind(descriptor, socketAddress, socklen_t(MemoryLayout<sockaddr_in>.size))
+                }
             }
+            if result == 0 { return port }
+            guard errno == EADDRINUSE else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
         }
-        guard result == 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
-        return UInt16(bigEndian: address.sin_port)
+        throw NSError(domain: NSPOSIXErrorDomain, code: Int(EADDRINUSE))
     }
 
     private func rawRequest(port: Int, fragments: [String]) async throws -> String {
