@@ -77,8 +77,9 @@ jobs:
           scripts/package-dmg.sh "$APP" LaunchDeck.dmg
           shasum -a 256 LaunchDeck.dmg > LaunchDeck.dmg.sha256
           codesign --verify --deep --strict "$APP"
-          xcrun lipo -verify_arch arm64 "$APP/Contents/MacOS/LaunchDeck"
-          xcrun lipo -verify_arch x86_64 "$APP/Contents/MacOS/LaunchDeck"
+          release_archs="$(xcrun lipo -archs "$APP/Contents/MacOS/LaunchDeck")"
+          [[ " $release_archs " == *" arm64 "* ]]
+          [[ " $release_archs " == *" x86_64 "* ]]
       - name: Publish unnotarized preview
         env:
           GH_TOKEN: ${{ github.token }}
