@@ -120,3 +120,24 @@ test('stale press conflicts refresh safely and do not start an animation burst',
   assert.equal(JSON.parse(requests[1].options.body).revision,9);
   assert.equal(JSON.parse(requests[1].options.body).pageID,'new-page');
 });
+
+test('advanced override clearly identifies temporary mode and resumes automatic switching',async()=>{
+  const h=harness();await h.flush();
+  assert.equal(h.elements.get('page-name').textContent,'Temporary override · Main');
+  const resume=h.elements.get('resume-auto');assert.equal(resume.disabled,false);
+  h.setSnapshot(fixture({mode:'Auto',profileID:'global',profileName:'Global'}));
+  await resume.fire('click');await h.flush();
+  const request=h.calls.find(x=>x.path==='/api/activate');
+  assert.deepEqual(JSON.parse(request.options.body),{profileID:null});
+  assert.equal(h.elements.get('page-name').textContent,'Automatic · Main');
+  assert.equal(resume.disabled,true);
+  const before=h.calls.length;await resume.fire('click');await h.flush();
+  assert.equal(h.calls.length,before,'resuming automatic mode twice must not issue another request');
+});
+
+test('temporary profile override cannot be sent while disconnected',async()=>{
+  const h=harness();await h.flush();
+  h.setFetch(()=>{throw new TypeError('offline')});await h.advance(800);
+  const before=h.calls.length;await h.elements.get('resume-auto').fire('click');await h.flush();
+  assert.equal(h.calls.length,before);
+});

@@ -45,8 +45,11 @@ struct EditorHeader: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
+                    Text("Editing: \(coordinator.selectedProfile?.name ?? "Choose a profile")").font(.caption)
                     Text(coordinator.runtimeDescription).font(.caption).lineLimit(2)
                         .help(coordinator.runtimeDescription)
+                    Text("Physical buttons select controls while this window is focused. Navigation buttons still navigate.")
+                        .font(.caption2).foregroundStyle(.secondary)
                     Text(coordinator.statusText).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                         .help(coordinator.statusText)
                 }
@@ -55,14 +58,6 @@ struct EditorHeader: View {
                     Button("Keyboard Access", systemImage: "lock.shield") { coordinator.permissions.requestAccess() }
                         .labelStyle(.iconOnly)
                         .help("\(PermissionService.settingsGuidance) Required for shortcuts and text.")
-                }
-                Menu("Activation") {
-                    Button("Auto: Follow Frontmost App") { coordinator.useAutoProfiles() }
-                    Button("Activate Selected Profile") { coordinator.activateSelectedProfile() }.disabled(coordinator.selectedProfile == nil)
-                    Divider()
-                    ForEach(coordinator.configuration.profiles) { profile in
-                        Button(profile.name) { coordinator.activateProfile(profile.id) }
-                    }
                 }
             }
             if let message {
@@ -80,6 +75,30 @@ struct EditorHeader: View {
                 .popover(isPresented: $showMessage) {
                     ScrollView { Text(message).textSelection(.enabled).padding(16).frame(maxWidth: .infinity, alignment: .leading) }
                         .frame(width: 360, height: 180)
+                }
+            }
+        }
+    }
+}
+
+struct ProfileOverrideMenu: View {
+    let coordinator: AppCoordinator
+
+    var body: some View {
+        Menu("Profile Override") {
+            Text("Temporary until resumed or LaunchDeck restarts")
+            Button("Resume Automatic Switching") { coordinator.useAutoProfiles() }
+                .disabled(coordinator.profileOverrideID == nil)
+            Divider()
+            ForEach(coordinator.configuration.profiles) { profile in
+                Button {
+                    coordinator.activateProfile(profile.id)
+                } label: {
+                    if coordinator.profileOverrideID == profile.id {
+                        Label(profile.name, systemImage: "checkmark")
+                    } else {
+                        Text(profile.name)
+                    }
                 }
             }
         }

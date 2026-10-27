@@ -16,7 +16,7 @@ struct CoordinatorTests {
         try body(coordinator, store)
     }
 
-    @Test("Selecting an editor profile does not activate it; manual activation persists")
+    @Test("Selecting a profile only edits it; overrides are temporary and never saved")
     func selectionAndActivation() throws {
         try withCoordinator { coordinator, store in
             coordinator.addManualProfile(name: "Writing")
@@ -25,15 +25,56 @@ struct CoordinatorTests {
             #expect(coordinator.runtimeProfile?.isGlobal == true)
             coordinator.activateSelectedProfile()
             #expect(coordinator.runtimeProfile?.id == manual.id)
+            coordinator.selectPad(0)
+            coordinator.updateSelectedBinding(label: "Live override edit")
             let persisted = try store.load()
-            #expect(persisted.manuallyActivatedProfileID == manual.id)
+            #expect(persisted.manuallyActivatedProfileID == nil)
             let restarted = AppCoordinator(profileStore: store)
             defer { restarted.shutdown() }
-            #expect(restarted.runtimeProfile?.id == manual.id)
+            #expect(restarted.runtimeProfile?.isGlobal == true)
             coordinator.selectProfile(coordinator.configuration.profiles.first(where: \.isGlobal)?.id)
             #expect(coordinator.runtimeProfile?.id == manual.id)
             coordinator.useAutoProfiles()
             #expect(coordinator.runtimeProfile?.isGlobal == true)
+        }
+    }
+
+    @Test("Legacy saved pins are ignored without changing profiles or the file format")
+    func legacyPinIsIgnored() throws {
+        try withCoordinator { _, store in
+            let global = Profile(name: "Global")
+            let app = Profile(name: "TextEdit", applicationBundleIdentifier: "com.apple.TextEdit")
+            let saved = Configuration(profiles: [global, app], manuallyActivatedProfileID: app.id)
+            try store.save(saved)
+            let restarted = AppCoordinator(profileStore: store)
+            defer { restarted.shutdown() }
+            #expect(restarted.runtimeProfile?.id == global.id)
+            #expect(restarted.configuration.profiles == saved.profiles)
+            #expect(restarted.configuration.schemaVersion == 3)
+            restarted.selectPad(0)
+            restarted.updateSelectedBinding(label: "Immediately saved")
+            #expect(try store.load().manuallyActivatedProfileID == nil)
+        }
+    }
+
+    @Test("Undoing an assignment does not restore a completed profile override")
+    func undoDoesNotRestoreOverride() throws {
+        try withCoordinator { coordinator, _ in
+            coordinator.addManualProfile(name: "Temporary")
+            let manager = UndoManager()
+            manager.groupsByEvent = false
+            coordinator.activateSelectedProfile()
+            coordinator.setUndoManager(manager)
+            manager.beginUndoGrouping()
+            coordinator.selectPad(0)
+            coordinator.updateSelectedBinding(label: "Changed")
+            manager.endUndoGrouping()
+            coordinator.setUndoManager(nil)
+            coordinator.useAutoProfiles()
+            coordinator.setUndoManager(manager)
+            manager.undo()
+            #expect(coordinator.runtimeProfile?.isGlobal == true)
+            #expect(coordinator.displayedBinding(at: 0) == nil)
         }
     }
 
@@ -43,6 +84,7 @@ struct CoordinatorTests {
             coordinator.addManualProfile()
             coordinator.activateSelectedProfile()
             coordinator.removeSelectedProfile()
+            #expect(coordinator.profileOverrideID == nil)
             #expect(coordinator.configuration.manuallyActivatedProfileID == nil)
             let persisted = try store.load()
             #expect(persisted.manuallyActivatedProfileID == nil)

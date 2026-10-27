@@ -8,7 +8,9 @@ struct ActiveApplication: Equatable, Sendable {
     let bundleIdentifier: String?
     let localizedName: String
     let processIdentifier: pid_t
+}
 
+extension ActiveApplication {
     init(_ application: NSRunningApplication) {
         bundleIdentifier = application.bundleIdentifier
         localizedName = application.localizedName ?? "Unknown App"

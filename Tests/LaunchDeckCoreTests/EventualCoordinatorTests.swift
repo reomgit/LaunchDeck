@@ -135,7 +135,7 @@ struct EventualCoordinatorTests {
             #expect(coordinator.runtimeProfile?.id == manual)
             #expect(coordinator.companionSnapshot().profileID == manual)
             #expect(coordinator.companionSnapshot().mode == "Manual")
-            #expect(try store.load().manuallyActivatedProfileID == manual)
+            #expect(try store.load().manuallyActivatedProfileID == nil)
             coordinator.useAutoProfiles()
             #expect(coordinator.companionSnapshot().profileID == global.id)
             #expect(coordinator.companionSnapshot().mode == "Auto")

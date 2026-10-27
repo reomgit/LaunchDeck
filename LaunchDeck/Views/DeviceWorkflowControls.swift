@@ -40,6 +40,10 @@ struct DeviceWorkflowControls: View {
                 Button("Extensions…") { coordinator.workflowPanel = .extensions }
                 Button("Community Content…") { coordinator.workflowPanel = .content }
                 Button("Phone / Tablet…") { coordinator.workflowPanel = .companion }
+                Divider()
+                Menu("Advanced") {
+                    ProfileOverrideMenu(coordinator: coordinator)
+                }
             }
         }
         .alert("Enable Model-Specific Layouts?", isPresented: $showOverrideWarning) {

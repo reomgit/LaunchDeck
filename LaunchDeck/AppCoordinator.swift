@@ -18,6 +18,7 @@ final class AppCoordinator {
     }
     private(set) var activeApplication: ActiveApplication?
     private(set) var activeLayout: ResolvedLayout
+    private(set) var profileOverrideID: UUID?
     var selectedProfileID: UUID? { didSet { refreshLightingPreview() } }
     private(set) var editorModel: DeviceModel = .miniMK3
     private(set) var followsConnectedDevice = true
@@ -61,7 +62,7 @@ final class AppCoordinator {
     @ObservationIgnored private let packageStore: ProfilePackageStore
     @ObservationIgnored private let resolver = ProfileResolver()
     @ObservationIgnored private let editorLayoutCache = EditorLayoutCache()
-    @ObservationIgnored private let appMonitor = ActiveAppMonitor()
+    @ObservationIgnored private let appMonitor: ActiveAppMonitor
     @ObservationIgnored private let actionExecutor: ActionExecutor
     @ObservationIgnored private let sessionMonitor: WorkspaceSessionMonitor
     @ObservationIgnored private let ledRenderer: LEDRenderer
@@ -75,8 +76,9 @@ final class AppCoordinator {
     @ObservationIgnored private var canPersist = true
 
     init(profileStore: ProfileStore = ProfileStore(), sessionMonitor: WorkspaceSessionMonitor = WorkspaceSessionMonitor(),
-         actionExecutor: ActionExecutor = ActionExecutor()) {
+         actionExecutor: ActionExecutor = ActionExecutor(), appMonitor: ActiveAppMonitor = ActiveAppMonitor()) {
         self.profileStore = profileStore
+        self.appMonitor = appMonitor
         scriptApprovals = ScriptApprovalStore(directory: profileStore.directory)
         scriptExecutor = ScriptExecutor(approvals: scriptApprovals)
         var ecosystemFailure: String?
@@ -99,9 +101,11 @@ final class AppCoordinator {
                 canPersist = false
             }
         }
+        // Legacy pins never disable automatic switching after launch. Overrides are session-only.
+        loaded.manuallyActivatedProfileID = nil
         configuration = loaded
         selectedProfileID = loaded.profiles.first(where: \.isGlobal)?.id
-        let runtime = ProfileResolver().activeProfile(profiles: loaded.profiles, bundleIdentifier: nil, manuallyActivatedProfileID: loaded.manuallyActivatedProfileID)
+        let runtime = ProfileResolver().activeProfile(profiles: loaded.profiles, bundleIdentifier: nil)
         runtimeProfileID = runtime?.id
         activeLayout = ProfileResolver().resolve(profiles: loaded.profiles, bundleIdentifier: nil, revision: 0, profileID: runtime?.id)
         ledRenderer = LEDRenderer(midi: midi)
@@ -192,7 +196,7 @@ final class AppCoordinator {
     var editorFolders: [DeckFolder] { editorSnapshot.folders }
     var selectedPage: DeckPage? { editorPages.first { $0.id == selectedPageID } }
     var runtimeProfile: Profile? {
-        resolver.activeProfile(profiles: configuration.profiles, bundleIdentifier: activeApplication?.bundleIdentifier, manuallyActivatedProfileID: configuration.manuallyActivatedProfileID)
+        resolver.activeProfile(profiles: configuration.profiles, bundleIdentifier: activeApplication?.bundleIdentifier, manuallyActivatedProfileID: profileOverrideID)
     }
     private var runtimePages: [DeckPage] {
         guard let runtimeProfile else { return [] }
@@ -202,7 +206,7 @@ final class AppCoordinator {
     private var selectedHardwareSession: HardwareDeckSession? { selectedHardwareID.flatMap { hardwareSessions[$0] } }
     var runtimePage: DeckPage? { runtimePages.first { $0.id == (selectedHardwareSession?.pageID ?? navigation.pageID) } }
     var runtimeDescription: String {
-        let mode = configuration.manuallyActivatedProfileID == nil ? "Auto" : "Manual"
+        let mode = profileOverrideID == nil ? "Automatic" : "Temporary override"
         let page = runtimePage
         var names = [page?.name ?? "Home"]
         var parent = page?.folderID
@@ -211,7 +215,7 @@ final class AppCoordinator {
         while let id = parent, visited.insert(id).inserted, let folder = folders.first(where: { $0.id == id }) {
             names.insert(folder.name, at: 0); parent = folder.parentFolderID
         }
-        return "\(mode) · \(runtimeProfile?.name ?? "Global") · \(names.joined(separator: " / "))"
+        return "In use: \(runtimeProfile?.name ?? "Global") · \(mode) · \(names.joined(separator: " / "))"
     }
     var statusText: String {
         if isPaused { return "Paused" }
@@ -314,7 +318,7 @@ final class AppCoordinator {
         guard let selectedProfile, !selectedProfile.isGlobal else { return }
         editConfiguration("Delete Profile") {
             configuration.profiles.removeAll { $0.id == selectedProfile.id }
-            if configuration.manuallyActivatedProfileID == selectedProfile.id { configuration.manuallyActivatedProfileID = nil }
+            if profileOverrideID == selectedProfile.id { actionExecutor.cancel(); profileOverrideID = nil }
             selectProfile(globalProfile?.id)
         }
     }
@@ -322,11 +326,14 @@ final class AppCoordinator {
     func activateProfile(_ id: UUID) {
         guard configuration.profiles.contains(where: { $0.id == id }) else { return }
         actionExecutor.cancel()
-        editConfiguration("Activate Profile") { configuration.manuallyActivatedProfileID = id }
+        profileOverrideID = id
+        resolveRuntimeLayout()
     }
     func useAutoProfiles() {
+        guard profileOverrideID != nil else { return }
         actionExecutor.cancel()
-        editConfiguration("Use Auto Profiles") { configuration.manuallyActivatedProfileID = nil }
+        profileOverrideID = nil
+        resolveRuntimeLayout()
     }
     func appCandidates() -> [ActiveApplication] {
         NSWorkspace.shared.runningApplications.compactMap { application in
@@ -546,6 +553,9 @@ final class AppCoordinator {
         registerUndo(restoring: previous, actionName: actionName); persistAndRefresh()
     }
     private func persistAndRefresh() {
+        if let id = profileOverrideID, !configuration.profiles.contains(where: { $0.id == id }) {
+            actionExecutor.cancel(); profileOverrideID = nil
+        }
         if !editorPages.contains(where: { $0.id == selectedPageID }) { selectedPageID = DeckPage.homeID; selectedPadIndex = nil }
         // Main-actor serialization keeps rapid edits and Undo writes in chronological order.
         if canPersist {
@@ -829,7 +839,7 @@ final class AppCoordinator {
                 symbolName: binding?.symbolName, artworkID: binding?.artworkID, enabled: binding != nil && !isPaused && !isSessionSuspended)
         }
         return CompanionSnapshot(revision: nextRevision, profileID: runtimeProfile?.id, profileName: runtimeProfile?.name ?? "Global",
-            mode: configuration.manuallyActivatedProfileID == nil ? "Auto" : "Manual", pageID: companionNavigation.pageID,
+            mode: profileOverrideID == nil ? "Auto" : "Manual", pageID: companionNavigation.pageID,
             pageName: companionPages.first(where: { $0.id == companionNavigation.pageID })?.name ?? "Home", controls: controls,
             profiles: configuration.profiles.map { CompanionProfile(id: $0.id, name: $0.name) }, feedback: companionFeedback,
             animated: companion.isRunning && !isPaused && !isSessionSuspended

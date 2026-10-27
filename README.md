@@ -44,15 +44,19 @@ Profiles use **Shared** mappings by default: grid assignments and common top/rig
 
 Application profiles inherit their matching Global model’s pages, folders, and assignments until they supply a control override or an explicit disabled control. **Clear Control** removes an override and restores inheritance. Manual profiles are independent. Duplicating an application profile creates an independent Manual snapshot, including its inherited controls.
 
-### Runtime activation and navigation
+### Automatic profiles and navigation
 
-The status area below the deck and menu bar show the active runtime profile, **Auto/Manual** mode, and current page/folder path. Selecting a profile in the sidebar changes the editor only. **Activate Profile** pins any selected profile until you choose **Auto: Follow Frontmost App**, including across restarts. Auto uses the frontmost app's profile or falls back to Global. Deleting the pinned profile returns to Auto.
+Settings save and apply immediately, with no activation step. LaunchDeck automatically uses the focused app's profile, falling back to Global when there is no matching app profile. App profiles inherit Global controls until overridden or explicitly disabled. Changes to Global immediately update inherited controls on connected Launchpads and the companion.
+
+The editor identifies **Editing** and **In use** profiles separately, and the menu bar shows the profile and page/folder path currently in use. Selecting a profile in the sidebar only changes what you edit; app-specific edits apply when that app gains focus. Physical buttons select controls while LaunchDeck's window is focused; assigned navigation buttons still navigate. Switch to another app to run assigned keyboard or app-opening actions.
+
+For an optional temporary layout, open **Tools → Advanced → Profile Override**. Choose any profile, including a Manual or imported profile, to override automatic switching. **Resume Automatic Switching** immediately follows the currently focused app again. Overrides are visibly labelled, are not part of settings Undo, and end when LaunchDeck restarts or the overridden profile is deleted. The menu bar and companion offer the same controls under **Advanced**. Legacy saved pins are ignored on startup; profile contents and the configuration format are preserved.
 
 Assign **Open Folder**, **Back**, **Home**, **Previous Page**, or **Next Page** to any control; no buttons are reserved. Back follows folder-entry history. Home returns to the initial root page. Previous/Next stop at the current folder's page boundaries. Profile changes reset runtime navigation to Home. The initial Home page and inherited views cannot be deleted from an application profile; a folder must retain a page, or be deleted as a whole.
 
 ### Execution and feedback
 
-LaunchDeck runs one sequence at a time and stops at the first failure. An explicit launch/open step waits for the opened app to become active, then sends subsequent keyboard/text steps there. Unexpected foreground app changes cancel sequences containing keyboard/text input. Disconnecting, pausing, navigating, manually changing activation, sleeping, switching away from the user session, or quitting cancels active execution and releases keyboard modifiers.
+LaunchDeck runs one sequence at a time and stops at the first failure. An explicit launch/open step waits for the opened app to become active, then sends subsequent keyboard/text steps there. Unexpected foreground app changes cancel sequences containing keyboard/text input. Disconnecting, pausing, navigating, changing a temporary profile override, sleeping, switching away from the user session, or quitting cancels active execution and releases keyboard modifiers.
 
 On system sleep or user-session deactivation, LaunchDeck stops device monitoring and suspends hardware actions. It reconnects, refreshes the foreground app and permissions, and repaints the current layout when both the computer and user session are active again. This preserves the user’s Pause setting, profile activation, and navigation; cancelled macros are not resumed.
 
@@ -104,7 +108,7 @@ An actual notarization ticket has not been verified in this session.
 
 ## Verification and limits
 
-`swift test` passes 121 tests, covering protocol mappings, migration, persistence, execution, packages, catalogs, companion transport and coordinator behavior. Native arm64 and x86_64 builds are verified. Desktop UI checks cover disconnected model previews, tool panels and copy previews; responsive browser checks cover phone/tablet viewports, feedback, activation, pairing and disconnect states.
+`swift test --no-parallel` passes 194 tests, covering protocol mappings, migration, persistence, execution, packages, catalogs, companion transport, automatic profiles, temporary overrides, and coordinator behavior. The 10 companion client tests also pass. The audio health-check and coalesced-lighting tests can fail under concurrent suite scheduling; they pass in isolation and in the serial suite. Native arm64 and x86_64 builds are verified. Desktop UI checks cover disconnected model previews, tool panels and copy previews; responsive browser checks cover phone/tablet viewports, feedback, activation, pairing and disconnect states.
 
 Physical Mini/X/Pro MIDI input, LEDs, reconnects and real phone/tablet Wi-Fi behavior still require device acceptance. Accessibility/Automation-controlled target-app dispatch and a signed/notarized release require the relevant local permissions and credentials. Synthetic events may be rejected by Secure Input or individual apps; dispatched feedback does not confirm target acceptance. Hardware-specific labels/artwork appear in LaunchDeck, while Launchpads use RGB LEDs. Logitech/Elgato hardware adapters, a hosted marketplace, cloud synchronization and native mobile editing are outside this delivery.
 

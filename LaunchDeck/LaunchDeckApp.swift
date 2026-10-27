@@ -139,11 +139,8 @@ private struct MenuBarContent: View {
         Toggle("Pause", isOn: Binding(get: { coordinator.isPaused }, set: { coordinator.isPaused = $0 }))
         Divider()
         Text(coordinator.runtimeDescription)
-        Button("Auto: Follow Frontmost App") { coordinator.useAutoProfiles() }
-        Menu("Activate Profile") {
-            ForEach(coordinator.configuration.profiles) { profile in
-                Button(profile.name) { coordinator.activateProfile(profile.id) }
-            }
+        Menu("Advanced") {
+            ProfileOverrideMenu(coordinator: coordinator)
         }
         if let error = coordinator.persistenceError { Text(error).foregroundStyle(.red) }
         if let feedback = coordinator.feedbackMessage { Text(feedback) }

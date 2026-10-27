@@ -5,6 +5,34 @@ import Testing
 
 @MainActor
 struct HardwareDeckSessionTests {
+    @Test func appProfilesAndLiveInheritedEditsRefreshMultipleDevices() {
+        var frames: [Int32: [Int: PadColor]] = [:]
+        let mini = HardwareDeckSession(deviceID: 10, model: .miniMK3, generation: 1, send: { _ in })
+        let pro = HardwareDeckSession(deviceID: 20, model: .proMK3, generation: 2, send: { _ in })
+        mini.renderer.onFrame = { frames[10] = $0 }
+        pro.renderer.onFrame = { frames[20] = $0 }
+        defer { for session in [mini, pro] { session.renderer.stop(clear: false) } }
+        var global = Profile(name: "Global", bindings: [PadBinding(index: 0, label: "Copy", color: .blue, action: .shortcut(.copy))])
+        let first = Profile(name: "First", applicationBundleIdentifier: "test.first", bindings: [PadBinding(index: 0, label: "Paste", color: .orange, action: .shortcut(.paste))])
+        let second = Profile(name: "Second", applicationBundleIdentifier: "test.second")
+        for session in [mini, pro] {
+            session.update(profiles: [global, first, second], bundleIdentifier: "test.first", profileID: nil, revision: 1, paused: false)
+            #expect(session.layout.binding(at: 0)?.action == .shortcut(.paste))
+            #expect(frames[session.deviceID]?[0] == .orange)
+            session.update(profiles: [global, first, second], bundleIdentifier: "test.second", profileID: nil, revision: 2, paused: false)
+            #expect(session.layout.binding(at: 0)?.action == .shortcut(.copy))
+            #expect(frames[session.deviceID]?[0] == .blue)
+        }
+        global.bindings[0].color = .green
+        for session in [mini, pro] {
+            session.update(profiles: [global, first, second], bundleIdentifier: "test.second", profileID: nil, revision: 3, paused: false)
+            #expect(frames[session.deviceID]?[0] == .green)
+            session.update(profiles: [global, first, second], bundleIdentifier: "test.other", profileID: nil, revision: 4, paused: false)
+            #expect(session.layout.binding(at: 0)?.label == "Copy")
+            #expect(frames[session.deviceID]?[0] == .green)
+        }
+    }
+
     @Test func unchangedDeviceLayoutKeepsItsOwnInFlightLighting() {
         var frame: [Int: PadColor] = [:]
         let session = HardwareDeckSession(deviceID: 10, model: .miniMK3, generation: 1, send: { _ in })
