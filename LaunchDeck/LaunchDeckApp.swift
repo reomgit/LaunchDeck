@@ -175,6 +175,7 @@ private struct TitlebarStatusControls: View {
                 .controlSize(.small)
                 .help(coordinator.isPaused ? "Paused · switch off to resume" : "Running · switch on to pause")
         }
+        .environment(\.appearsActive, true)
         .padding(.horizontal, 10)
         .frame(width: 176, height: 30, alignment: .trailing)
     }
